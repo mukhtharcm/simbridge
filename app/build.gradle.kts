@@ -20,8 +20,8 @@ android {
         applicationId = "io.github.mukhtharcm.simbridge"
         minSdk = 29
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.1.1"
+        versionCode = 8
+        versionName = "0.3.1"
     }
 
     signingConfigs {

@@ -58,7 +58,7 @@ on)
     root <<EOF
 set -e
 pm path $PKG >/dev/null || { echo "simbridge is not installed; did the phone reboot after install?"; exit 1; }
-for p in RECORD_AUDIO READ_PHONE_STATE ANSWER_PHONE_CALLS CALL_PHONE POST_NOTIFICATIONS; do
+for p in RECORD_AUDIO READ_PHONE_STATE ANSWER_PHONE_CALLS CALL_PHONE POST_NOTIFICATIONS READ_SMS SEND_SMS RECEIVE_SMS; do
     pm grant $PKG android.permission.\$p
 done
 appops set --uid $PKG RECORD_AUDIO allow
@@ -78,13 +78,16 @@ chmod 600 /data/user/0/$PKG/files/config.json
 restorecon /data/user/0/$PKG/files/config.json
 am force-stop $PKG
 cmd role add-role-holder android.app.role.DIALER $PKG
+cmd role add-role-holder android.app.role.SMS $PKG
 am start -n $PKG/.MainActivity >/dev/null
 sleep 2
 input keyevent KEYCODE_HOME
 echo "phone app is now: \$(cmd role get-role-holders android.app.role.DIALER)"
+echo "SMS app is now: \$(cmd role get-role-holders android.app.role.SMS)"
 EOF
     ;;
 off)
+    # Gives calls back. SMS stays with simbridge; see the README's Undo to hand that back too.
     root <<EOF
 cmd role add-role-holder android.app.role.DIALER $OLD_DIALER
 echo "phone app is now: \$(cmd role get-role-holders android.app.role.DIALER)"

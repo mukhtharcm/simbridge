@@ -22,6 +22,12 @@ class PcmTest {
         for (bad in listOf("**21*123#", "*123#", "12", "+91 12345", "1234;rm", "")) assertFalse(bad, Rules.dialable(bad))
     }
 
+    @Test fun smsTextMustBeNonEmptyAndBounded() {
+        assertTrue(Rules.sendable("hi"))
+        assertFalse(Rules.sendable("  "))
+        assertFalse(Rules.sendable("x".repeat(1531)))
+    }
+
     @Test fun tokenComesFromTheV0PathOnly() {
         assertEquals("abc", Rules.tokenIn("/v0?token=abc"))
         assertEquals("abc", Rules.tokenIn("/v0?x=1&token=abc"))

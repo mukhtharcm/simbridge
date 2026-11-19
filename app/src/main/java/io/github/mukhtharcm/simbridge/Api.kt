@@ -37,6 +37,9 @@ object Rules {
         return path.substringAfter('?').split('&').firstOrNull { it.startsWith("token=") }?.substringAfter('=')
     }
 
+    /** Not empty, and at most ten SMS parts long. */
+    fun sendable(text: String) = text.isNotBlank() && text.length <= 1530
+
     fun sameToken(a: String, b: String) = MessageDigest.isEqual(a.toByteArray(), b.toByteArray())
 
     fun endReason(cause: Int) = when (cause) {
@@ -106,6 +109,7 @@ object Hub {
                 isReuseAddr = true
                 start()
             }
+            Sms.start(app)
         }
     }
 
@@ -143,9 +147,12 @@ object Hub {
             try {
                 val msg = JSONObject(text)
                 if (msg.has("ref")) reply.put("ref", msg.get("ref"))
-                val error = command(msg)
+                val error = command(msg, reply)
                 reply.put("ok", error == null)
                 if (error != null) reply.put("error", error)
+            } catch (e: SecurityException) {
+                Log.w(TAG, "not permitted: $e")
+                reply.put("ok", false).put("error", "no_permission")
             } catch (e: Exception) {
                 Log.w(TAG, "bad command: $e")
                 reply.put("ok", false).put("error", "bad_request")
@@ -154,8 +161,8 @@ object Hub {
         }
     }
 
-    /** Runs one command; returns null when it worked, or the error name. */
-    private fun command(msg: JSONObject): String? {
+    /** Runs one command; returns null when it worked, or the error name. Results go into [reply]. */
+    private fun command(msg: JSONObject, reply: JSONObject): String? {
         val c = call
         when (msg.getString("cmd")) {
             "dial" -> {
@@ -179,6 +186,19 @@ object Hub {
                 if (!digits.all { it in "0123456789*#" } || digits.length > 32) return "bad_digits"
                 thread { for (d in digits) { c.playDtmfTone(d); Thread.sleep(150); c.stopDtmfTone(); Thread.sleep(80) } }
             }
+            "sms_send" -> {
+                val to = msg.getString("to")
+                val text = msg.getString("text")
+                if (!Rules.dialable(to)) return "bad_number"
+                if (!Rules.sendable(text)) return "bad_text"
+                reply.put("id", Sms.send(to, text, msg.opt("ref")))
+            }
+            "sms_read" -> Sms.markRead(msg.getString("thread"))
+            "sms_threads" -> reply.put("threads", Sms.threads())
+            "sms_messages" -> reply.put(
+                "messages",
+                Sms.messages(msg.getString("thread"), msg.optString("before").ifEmpty { null }, msg.optInt("limit", 50)),
+            )
             else -> return "unknown_command"
         }
         return null

@@ -4,8 +4,8 @@ Turns a rooted Android phone's SIM into a building block: calls, call audio and 
 ([docs/API.md](docs/API.md)). The phone's own microphone and speaker stay out of the call; audio goes in and
 out digitally.
 
-**Status: calls only.** Call events, dial, answer, hang up, DTMF and two-way call audio go over the API.
-SMS and real clients are not built yet.
+**Status: calls and SMS over the API; no real client yet.** Call events, dial, answer, hang up, DTMF, two-way
+call audio, and reading and sending SMS. `scripts/client.mjs` is a test client only.
 
 ## Parts
 
@@ -29,6 +29,9 @@ SMS and real clients are not built yet.
   will ship its own, built from source, before it can replace gsm2sip.
 - To be a privileged app: capturing call audio needs `CAPTURE_AUDIO_OUTPUT`.
 - To be the default phone app: that is how Android hands it the calls.
+- To be the default SMS app: Android shows an app its own sent messages only then. simbridge then stores
+  incoming and sent texts itself, in Android's own message store. **MMS is not supported** and is not fetched
+  while simbridge is the SMS app.
 
 ## Build and install
 
@@ -52,7 +55,9 @@ echo "password=<the password>" > signing/keystore.properties
 
 ## Undo
 
-`scripts/phone.sh off`, then on the phone as root: `rm -rf /data/adb/modules/simbridge` and reboot.
+`scripts/phone.sh off` gives calls back. To give SMS back, on the phone as root:
+`cmd role add-role-holder android.app.role.SMS com.android.messaging` (or whichever app had it).
+To remove simbridge, on the phone as root: `rm -rf /data/adb/modules/simbridge` and reboot.
 
 ## Credits
 
