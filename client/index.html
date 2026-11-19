@@ -981,7 +981,7 @@ function showLevel(frame) {
 function stopAudio() {
   $('voice').style.removeProperty('--level');
   if (outEl) { outEl.pause(); outEl.srcObject = null; outEl = null; }
-  outIndex = 0;
+  outIndex = 0; restored = false;
   if (!audio) return;
   audio.stream.getTracks().forEach((t) => t.stop());
   audio.ctx.close();
@@ -992,7 +992,8 @@ function stopAudio() {
 
 // Browsers that can choose an output (Chrome and Edge everywhere, Safari from iOS 26 and macOS 26)
 // list them here; the button cycles through them. Nothing about playback changes until it is used.
-let outputs = [], outIndex = 0, outEl = null;
+let outputs = [], outIndex = 0, outEl = null, restored = false;
+const OUTPUT = 'simbridge.output'; // the output last chosen on this device, used again for the next call
 const canSwitch = () => !!(window.AudioContext?.prototype.setSinkId || window.HTMLMediaElement?.prototype.setSinkId);
 
 async function loadOutputs() {
@@ -1006,6 +1007,15 @@ async function loadOutputs() {
   outputs = [{ deviceId: '', label: 'Default' }, ...found];
   if (outIndex >= outputs.length) outIndex = 0;
   drawOutput();
+  if (!restored && audio) {
+    restored = true;
+    let saved = null;
+    try { saved = JSON.parse(store.get(OUTPUT) ?? 'null'); } catch {}
+    // Ids can change between visits on some browsers, so the name is the fallback.
+    const i = saved ? outputs.findIndex((o) => o.deviceId === saved.id) : -1;
+    const j = i > 0 ? i : saved?.label ? outputs.findIndex((o) => o.label === saved.label) : -1;
+    if (j > 0) useOutput(j, true);
+  }
 }
 navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (audio) loadOutputs(); });
 
@@ -1015,9 +1025,10 @@ function drawOutput() {
   if (show) $('f-out').lastElementChild.textContent = (outputs[outIndex].label || 'Output').replace(/\s*\(.*\)$/, '').slice(0, 16);
 }
 
-$('output').onclick = async () => {
-  if (!audio || outputs.length < 2) return;
-  const next = (outIndex + 1) % outputs.length, d = outputs[next];
+$('output').onclick = () => { if (audio && outputs.length > 1) useOutput((outIndex + 1) % outputs.length); };
+
+async function useOutput(next, quiet = false) {
+  const d = outputs[next];
   try {
     if (audio.ctx.setSinkId) {
       await audio.ctx.setSinkId(d.deviceId);
@@ -1032,12 +1043,15 @@ $('output').onclick = async () => {
       await outEl.setSinkId(d.deviceId);
     }
     outIndex = next;
-    toast(`Sound now plays through: ${d.label || 'another output'}`);
+    if (!quiet) {
+      store.set(OUTPUT, JSON.stringify({ id: d.deviceId, label: d.label }));
+      toast(`Sound now plays through: ${d.label || 'another output'}`);
+    }
   } catch (e) {
-    toast(`Could not switch to ${d.label || 'that output'}: ${e.message}`);
+    if (!quiet) toast(`Could not switch to ${d.label || 'that output'}: ${e.message}`);
   }
   drawOutput();
-};
+}
 
 // A plain two-tone ring. Browsers keep a page silent until it has been clicked once, so a
 // notification is shown as well when notifications are on.
