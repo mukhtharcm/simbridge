@@ -4,8 +4,8 @@ Turns a rooted Android phone's SIM into a building block: calls, call audio and 
 ([docs/API.md](docs/API.md)). The phone's own microphone and speaker stay out of the call; audio goes in and
 out digitally.
 
-**Status: calls and SMS over the API; no real client yet.** Call events, dial, answer, hang up, DTMF, two-way
-call audio, and reading and sending SMS. `scripts/client.mjs` is a test client only.
+**Status: calls and SMS work over the API, with a web client.** Call events, dial, answer, hang up, DTMF,
+two-way call audio, and reading and sending SMS.
 
 ## Parts
 
@@ -15,7 +15,9 @@ call audio, and reading and sending SMS. `scripts/client.mjs` is a test client o
 | `app/src/main/assets/profiles/` | One JSON file per chip family: the mixer commands and audio settings. Add a file to support another phone. |
 | `magisk/` | Magisk module that installs the app as a privileged app and sets the audio properties. |
 | `scripts/phone.sh` | Build, install and drive it on the phone over ssh. |
-| `docs/API.md` | The API that clients will use (draft). |
+| `client/` | The web client: one page plus its app icon and manifest. No build step, no outside requests. |
+| `scripts/client.mjs` | A command-line test client. |
+| `docs/API.md` | The API that clients use (draft). |
 
 ## Supported phones
 
@@ -52,6 +54,24 @@ on the phone, so keep it private and use it for nothing else. To make one:
 keytool -genkeypair -keystore signing/release.jks -alias simbridge -keyalg RSA -validity 10000
 echo "password=<the password>" > signing/keystore.properties
 ```
+
+## The web client
+
+The `client/` folder is the whole client: messages, a keypad, and a call screen that can be minimized to a
+bar while you do something else. It asks for the bridge's address and token once and keeps them in the browser.
+It can be installed as an app (Settings, then Install, in Chrome or Edge; Share, then Add to Home Screen, in
+Safari), and can show notifications for calls and texts while it is in the background. Browsers only allow the microphone on `https://` pages and on `http://localhost`, so:
+
+- **On the computer you are sitting at:** serve the folder locally and open it.
+  ```sh
+  python3 -m http.server 8765 --bind 127.0.0.1 --directory client
+  ```
+  Then open `http://localhost:8765`. The page talks to the bridge directly, so this computer must be able to
+  reach the bridge's address.
+- **On other devices, such as a phone:** put the page and the API behind one HTTPS address with a reverse proxy
+  you trust (the page then connects with `wss://`). This is not set up by simbridge.
+
+Closing the page during a call hangs up, if no other client is connected.
 
 ## Undo
 

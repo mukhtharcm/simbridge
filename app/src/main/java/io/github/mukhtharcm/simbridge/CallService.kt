@@ -40,7 +40,10 @@ class CallService : InCallService() {
 
     private fun handle(call: Call, state: Int) {
         if (call !== Hub.call || state == lastState) return
+        // Android passes through "connecting" and "dialing"; clients are told "dialing" once.
+        val alreadyDialing = lastState == Call.STATE_CONNECTING || lastState == Call.STATE_DIALING
         lastState = state
+        if (alreadyDialing && (state == Call.STATE_CONNECTING || state == Call.STATE_DIALING)) return
         val event = JSONObject().put("event", "call").put("id", Hub.callId)
         val number = call.details?.handle?.schemeSpecificPart.orEmpty()
         when (state) {

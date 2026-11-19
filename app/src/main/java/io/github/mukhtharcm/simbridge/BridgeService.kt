@@ -23,14 +23,7 @@ class BridgeService : Service() {
         super.onCreate()
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(NotificationChannel("bridge", "simbridge", NotificationManager.IMPORTANCE_LOW))
-        val notification = Notification.Builder(this, "bridge")
-            .setContentTitle("simbridge is running")
-            .setSmallIcon(android.R.drawable.stat_sys_phone_call)
-            .build()
-        startForeground(
-            1, notification,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-        )
+        goForeground()
         // If the app died during a call, the handset's microphone and earpiece are still switched off
         // at the mixer. Put them back, unless a call is up and the bridge is using them now.
         val inCall = try { getSystemService(TelecomManager::class.java).isInCall } catch (_: SecurityException) { false }
@@ -39,7 +32,34 @@ class BridgeService : Service() {
         Log.i("simbridge", "foreground service up (inCall=$inCall)")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) = START_STICKY
+    // Every start asks again, so a service that began without the microphone gains it at the next
+    // chance, such as when a call comes in.
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        goForeground()
+        return START_STICKY
+    }
+
+    /**
+     * Android grants the microphone type only when the start comes from somewhere it trusts with the
+     * microphone, such as a visible screen. A start from the background, for instance on an incoming
+     * SMS after a reboot, is refused that type, and refusing is fatal unless caught. So ask for both
+     * types and settle for the phone-call type alone.
+     */
+    private fun goForeground() {
+        val notification = Notification.Builder(this, "bridge")
+            .setContentTitle("simbridge is running")
+            .setSmallIcon(android.R.drawable.stat_sys_phone_call)
+            .build()
+        try {
+            startForeground(
+                1, notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+            )
+        } catch (e: SecurityException) {
+            Log.w("simbridge", "no microphone type for the foreground service yet: ${e.message}")
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
+        }
+    }
     override fun onBind(intent: Intent?): IBinder? = null
 }
 

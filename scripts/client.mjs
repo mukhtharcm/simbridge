@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // A test client for the simbridge API. Needs Node 22 or newer (built-in WebSocket).
 //
-//   node scripts/client.mjs [--answer] [--dial NUMBER] [--play FILE.wav] [--hangup-after SECONDS]
+//   node scripts/client.mjs [--answer] [--dial NUMBER] [--play FILE.wav] [--dtmf DIGITS] [--hangup-after SECONDS]
 //
 // Prints every event, records the caller to recordings/<time>.wav, and with --play sends a
 // 16 kHz mono 16-bit WAV into the call once it is active. Reads BIND, PORT and TOKEN from secrets/api.env.
@@ -41,6 +41,7 @@ ws.onmessage = ({ data }) => {
   if (msg.state === 'ringing' && flag('--answer')) send({ cmd: 'answer', id: callId });
   if (msg.state === 'active') {
     if (toPlay) startSending();
+    if (value('--dtmf')) setTimeout(() => send({ cmd: 'dtmf', id: callId, digits: value('--dtmf') }), 3000);
     if (value('--hangup-after')) setTimeout(() => send({ cmd: 'hangup', id: callId }), value('--hangup-after') * 1000);
   }
   if (msg.state === 'ended') { clearInterval(sender); save(); if (!flag('--stay')) ws.close(); }
