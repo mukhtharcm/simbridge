@@ -29,16 +29,9 @@ of it through one WebSocket API. The included web client uses that API; anything
 
 ## How it works
 
-```mermaid
-flowchart LR
-  sim(["SIM card"]) --- app
-  subgraph phone["The spare phone"]
-    app["simbridge<br/>phone + SMS app"]
-  end
-  app <-->|"WebSocket API<br/>events, texts, call audio"| proxy["Your HTTPS proxy<br/>(Caddy)"]
-  proxy <--> web["Web client<br/>on your phone or computer"]
-  app -.->|"encrypted push"| push["Browser push service<br/>(Apple, Google, Mozilla)"] -.-> web
-```
+<p align="center">
+  <img src="docs/how.png" alt="The SIM connects to simbridge on the spare phone, which talks to the web client through an HTTPS proxy over a WebSocket, and sends notifications through the browser's push service">
+</p>
 
 - **Calls:** simbridge is the phone app, so it sees every call. Call audio is captured from the modem and
   played into the call digitally, as 16 kHz audio frames over the WebSocket. The web client turns them into

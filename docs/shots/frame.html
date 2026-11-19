@@ -52,6 +52,37 @@ if (shot === 'hero') {
          <iframe src="index.html#thread" style="width:1180px;height:760px;transform:scale(.898);transform-origin:top left;margin-bottom:-78px"></iframe>
        </div>`);
   phone('call', 1190, 90, 0.84);
+} else if (shot === 'how') {
+  // How the parts connect: boxes on a row, the push path underneath.
+  document.body.className = 'light';
+  const box = (x, y, w, title, sub, dark) => `
+    <rect x="${x}" y="${y}" width="${w}" height="150" rx="22" fill="${dark ? '#14213d' : '#fff'}" stroke="${dark ? 'none' : '#dde1e7'}" stroke-width="2"/>
+    <text x="${x + w / 2}" y="${y + 66}" class="t" fill="${dark ? '#fff' : '#14213d'}">${title}</text>
+    <text x="${x + w / 2}" y="${y + 102}" class="s" fill="${dark ? '#b8c0d3' : '#5b6478'}">${sub}</text>`;
+  const label = (x, y, text) => `<text x="${x}" y="${y}" class="l">${text}</text>`;
+  add(`<svg width="1600" height="560" viewBox="0 0 1600 560" style="position:absolute;inset:0">
+    <style>.t{font:700 34px Bricolage;text-anchor:middle;letter-spacing:-.02em}.s{font:500 22px Bricolage;text-anchor:middle}
+      .l{font:600 20px Bricolage;fill:#5b6478;text-anchor:middle}</style>
+    <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#14213d"/></marker>
+      <marker id="g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c9a227"/></marker></defs>
+    <path d="M70 120h86l34 34v72a14 14 0 0 1-14 14H70a14 14 0 0 1-14-14V134a14 14 0 0 1 14-14z" fill="#c9a227"/>
+    <rect x="86" y="160" width="74" height="54" rx="8" fill="#f6edcb"/>
+    ${label(123, 290, 'The SIM')}
+    <line x1="200" y1="180" x2="262" y2="180" stroke="#14213d" stroke-width="3"/>
+    ${box(270, 105, 330, 'simbridge', 'on the spare phone', true)}
+    <line x1="608" y1="180" x2="802" y2="180" stroke="#14213d" stroke-width="3" marker-start="url(#a)" marker-end="url(#a)"/>
+    ${label(705, 150, 'WebSocket API')}${label(705, 222, 'texts, calls, audio')}
+    ${box(810, 105, 300, 'HTTPS proxy', 'on your private network')}
+    <line x1="1118" y1="180" x2="1252" y2="180" stroke="#14213d" stroke-width="3" marker-start="url(#a)" marker-end="url(#a)"/>
+    ${box(1260, 105, 290, 'Web client', 'or your own app', true)}
+    <path d="M435 263V430H760" fill="none" stroke="#c9a227" stroke-width="3" stroke-dasharray="10 9" marker-end="url(#g)"/>
+    <path d="M1100 430H1405V263" fill="none" stroke="#c9a227" stroke-width="3" stroke-dasharray="10 9" marker-end="url(#g)"/>
+    <rect x="770" y="380" width="320" height="100" rx="22" fill="#f6edcb"/>
+    <text x="930" y="424" class="t" style="font-size:28px" fill="#14213d">Push service</text>
+    <text x="930" y="456" class="s" fill="#5b6478">Apple, Google or Mozilla</text>
+    ${label(600, 410, 'encrypted notification')}${label(1250, 410, 'even with the client closed')}
+  </svg>`);
 } else {
   // Four phones in a row, each with a caption under it.
   document.body.className = 'light';
