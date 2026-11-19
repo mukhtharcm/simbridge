@@ -1,16 +1,52 @@
-# simbridge
+<p align="center">
+  <img src="client/icon-192.png" width="88" alt="">
+</p>
 
-Use a spare Android phone's SIM from anywhere: make and take its calls and send and read its texts in a
-browser, with notifications when the browser is closed.
+<h1 align="center">simbridge</h1>
+
+<p align="center">
+  <b>Your spare Android phone's SIM, in a browser.</b><br>
+  Make and take its calls, send and read its texts, and get notified, from anywhere on your private network.
+</p>
+
+<p align="center">
+  <a href="https://github.com/mukhtharcm/simbridge/releases/latest"><img src="https://img.shields.io/github/v/release/mukhtharcm/simbridge?color=c9a227&label=release" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/mukhtharcm/simbridge?color=14213d" alt="MIT licence"></a>
+  <img src="https://img.shields.io/badge/Android-rooted%20(Magisk)-14213d" alt="Rooted Android with Magisk">
+</p>
+
+<p align="center">
+  <img src="docs/hero.png" alt="The simbridge web client: a conversation on a computer, and a call in progress on a phone">
+</p>
 
 simbridge turns a rooted Android phone into a small server for its own SIM. It takes over as the phone and SMS
-app, moves call audio in and out digitally (the phone's own microphone and speaker stay silent), and offers
-all of it through one WebSocket API. The included web client uses that API; anything else can too.
+app, moves call audio in and out digitally (the phone's own microphone and speaker stay silent), and offers all
+of it through one WebSocket API. The included web client uses that API; anything else can too.
 
-<p>
-  <img src="docs/screenshot-desktop.png" width="640" alt="The web client on a computer: a list of conversations and an open conversation">
-  <img src="docs/screenshot-call.png" width="180" alt="The call screen on a phone, during a call">
+<p align="center">
+  <img src="docs/screens.png" alt="The web client on a phone: texts, call history, contacts in dark mode, and an incoming call">
 </p>
+
+## How it works
+
+```mermaid
+flowchart LR
+  sim(["SIM card"]) --- app
+  subgraph phone["The spare phone"]
+    app["simbridge<br/>phone + SMS app"]
+  end
+  app <-->|"WebSocket API<br/>events, texts, call audio"| proxy["Your HTTPS proxy<br/>(Caddy)"]
+  proxy <--> web["Web client<br/>on your phone or computer"]
+  app -.->|"encrypted push"| push["Browser push service<br/>(Apple, Google, Mozilla)"] -.-> web
+```
+
+- **Calls:** simbridge is the phone app, so it sees every call. Call audio is captured from the modem and
+  played into the call digitally, as 16 kHz audio frames over the WebSocket. The web client turns them into
+  sound in your browser, and your microphone into frames back.
+- **Texts:** simbridge is the SMS app, and keeps texts in Android's own message store.
+- **Notifications:** for calls and texts, sent through your browser's own push service, encrypted so only your
+  browser can read them. They arrive even with the client closed.
+- **Everything stays private:** the API listens on one private address with a token, behind your VPN.
 
 **Status: early, but in daily use on one phone.** Calls, call audio, texts, call history, contact names and
 push notifications all work on the phone in the table below. It may need work for yours; see
