@@ -171,7 +171,7 @@
   #call-state { color: rgb(255 255 255 / 0.75); font-size: 1.05rem; }
   #call-pad { margin-bottom: 1.25rem; }
   #call-pad button { background: rgb(255 255 255 / 0.12); color: #fff; }
-  #call-buttons { display: flex; gap: 1.5rem; align-items: flex-start; }
+  #call-buttons { display: flex; gap: clamp(0.75rem, 4vw, 1.5rem); align-items: flex-start; }
   #call-buttons figure { margin: 0; display: grid; justify-items: center; gap: 0.35rem; font-size: 0.8125rem; color: rgb(255 255 255 / 0.8); }
 
   #newsheet, #namesheet { border-radius: 20px; background: var(--surface); width: min(24rem, 100% - 2rem); }
@@ -310,6 +310,7 @@
   <div id="call-buttons">
     <figure id="f-mute"><button class="round plain" id="mute" aria-pressed="false" aria-label="Mute"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4"/></svg></button><figcaption>Mute</figcaption></figure>
     <figure id="f-keys"><button class="round plain" id="keys" aria-expanded="false" aria-label="Keypad"><svg viewBox="0 0 24 24"><path d="M6 5h.01M12 5h.01M18 5h.01M6 11h.01M12 11h.01M18 11h.01M6 17h.01M12 17h.01M18 17h.01" stroke-width="3"/></svg></button><figcaption>Keypad</figcaption></figure>
+    <figure id="f-out" hidden><button class="round plain" id="output" aria-label="Change where the sound plays"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg></button><figcaption>Output</figcaption></figure>
     <figure id="f-answer"><button class="round go" id="answer" aria-label="Answer"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></button><figcaption>Answer</figcaption></figure>
     <figure><button class="round stop" id="hangup" aria-label="Hang up"><svg viewBox="0 0 24 24"><path d="M3 14c5-5 13-5 18 0l-2.2 2.6-3.6-1.5v-2.6a9 9 0 0 0-6.4 0v2.6l-3.6 1.5z"/></svg></button><figcaption id="hangup-label">Hang up</figcaption></figure>
   </div>
@@ -794,6 +795,7 @@ function drawCall(expand) {
   $('hangup').setAttribute('aria-label', ringing ? 'Decline' : 'Hang up');
   tick(); clearInterval(ticker);
   if (active) ticker = setInterval(tick, 1000);
+  drawOutput();
 }
 
 function endCall() {
@@ -956,7 +958,8 @@ async function startAudio() {
       if (call?.state === 'active' && !muted && ws?.readyState === 1) ws.send(e.data);
     };
     muted = false; $('mute').setAttribute('aria-pressed', 'false'); $('f-mute').lastElementChild.textContent = 'Mute';
-    audio = { stream, ctx, play: (frame) => { showLevel(frame); ear.port.postMessage(frame, [frame]); } };
+    audio = { stream, ctx, ear, play: (frame) => { showLevel(frame); ear.port.postMessage(frame, [frame]); } };
+    loadOutputs();
     return true;
   } catch (e) {
     toast(e.name === 'NotAllowedError' ? 'The microphone was not allowed, so calls cannot work here.' : `Microphone problem: ${e.message}`);
@@ -977,11 +980,64 @@ function showLevel(frame) {
 
 function stopAudio() {
   $('voice').style.removeProperty('--level');
+  if (outEl) { outEl.pause(); outEl.srcObject = null; outEl = null; }
+  outIndex = 0;
   if (!audio) return;
   audio.stream.getTracks().forEach((t) => t.stop());
   audio.ctx.close();
   audio = null;
 }
+
+// ---- where the sound plays ---------------------------------------------------------------------------
+
+// Browsers that can choose an output (Chrome and Edge everywhere, Safari from iOS 26 and macOS 26)
+// list them here; the button cycles through them. Nothing about playback changes until it is used.
+let outputs = [], outIndex = 0, outEl = null;
+const canSwitch = () => !!(window.AudioContext?.prototype.setSinkId || window.HTMLMediaElement?.prototype.setSinkId);
+
+async function loadOutputs() {
+  let found = [];
+  if (canSwitch() && navigator.mediaDevices?.enumerateDevices) {
+    try {
+      found = (await navigator.mediaDevices.enumerateDevices())
+        .filter((d) => d.kind === 'audiooutput' && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+    } catch {}
+  }
+  outputs = [{ deviceId: '', label: 'Default' }, ...found];
+  if (outIndex >= outputs.length) outIndex = 0;
+  drawOutput();
+}
+navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (audio) loadOutputs(); });
+
+function drawOutput() {
+  const show = !!audio && call?.state === 'active' && outputs.length > 1;
+  $('f-out').hidden = !show;
+  if (show) $('f-out').lastElementChild.textContent = (outputs[outIndex].label || 'Output').replace(/\s*\(.*\)$/, '').slice(0, 16);
+}
+
+$('output').onclick = async () => {
+  if (!audio || outputs.length < 2) return;
+  const next = (outIndex + 1) % outputs.length, d = outputs[next];
+  try {
+    if (audio.ctx.setSinkId) {
+      await audio.ctx.setSinkId(d.deviceId);
+    } else {
+      // Safari chooses outputs only for media elements, so route the caller's voice through one.
+      if (!outEl) {
+        const dest = audio.ctx.createMediaStreamDestination();
+        audio.ear.disconnect(); audio.ear.connect(dest);
+        outEl = new Audio(); outEl.srcObject = dest.stream;
+        await outEl.play();
+      }
+      await outEl.setSinkId(d.deviceId);
+    }
+    outIndex = next;
+    toast(`Sound now plays through: ${d.label || 'another output'}`);
+  } catch (e) {
+    toast(`Could not switch to ${d.label || 'that output'}: ${e.message}`);
+  }
+  drawOutput();
+};
 
 // A plain two-tone ring. Browsers keep a page silent until it has been clicked once, so a
 // notification is shown as well when notifications are on.
