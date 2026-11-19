@@ -1,103 +1,178 @@
 # simbridge
 
-Turns a rooted Android phone's SIM into a building block: calls, call audio and SMS behind one small API
-([docs/API.md](docs/API.md)). The phone's own microphone and speaker stay out of the call; audio goes in and
-out digitally.
+Use a spare Android phone's SIM from anywhere: make and take its calls and send and read its texts in a
+browser, with notifications when the browser is closed.
 
-**Status: calls and SMS work over the API, with a web client.** Call events, dial, answer, hang up, DTMF,
-two-way call audio, and reading and sending SMS.
+simbridge turns a rooted Android phone into a small server for its own SIM. It takes over as the phone and SMS
+app, moves call audio in and out digitally (the phone's own microphone and speaker stay silent), and offers
+all of it through one WebSocket API. The included web client uses that API; anything else can too.
 
-## Parts
+<p>
+  <img src="docs/screenshot-desktop.png" width="640" alt="The web client on a computer: a list of conversations and an open conversation">
+  <img src="docs/screenshot-call.png" width="180" alt="The call screen on a phone, during a call">
+</p>
 
-| Path | What |
-|---|---|
-| `app/` | The Android app (Kotlin; one dependency, the WebSocket server). |
-| `app/src/main/assets/profiles/` | One JSON file per chip family: the mixer commands and audio settings. Add a file to support another phone. |
-| `magisk/` | Magisk module that installs the app as a privileged app, sets the audio properties and opens the app once after boot. |
-| `tools/tinymix/` | The mixer tool the app runs as root (Go, from gsm2sip). Building needs Go. |
-| `scripts/phone.sh` | Build, install and drive it on the phone over ssh. |
-| `client/` | The web client: one page plus its app icon and manifest. No build step, no outside requests. |
-| `scripts/client.mjs` | A command-line test client. |
-| `docs/API.md` | The API that clients use (draft). |
+**Status: early, but in daily use on one phone.** Calls, call audio, texts, call history, contact names and
+push notifications all work on the phone in the table below. It may need work for yours; see
+[Adding a phone](#adding-a-phone).
 
-## Supported phones
+## What you need
 
-| Chip | Verified on | Profile |
-|---|---|---|
-| Snapdragon 695 (`holi`) | Moto g45 5G, LineageOS 24 (capture and playback, on a live call) | `holi.json` |
+- **An Android phone you can dedicate to this,** rooted with [Magisk](https://github.com/topjohnwu/Magisk),
+  with a SIM in it. It stays plugged in somewhere with signal.
+- **A supported chip.** Call audio is routed differently on every chip family, so simbridge needs a profile
+  for yours:
 
-## What it needs from the phone
+  | Chip | Verified on | Profile |
+  |---|---|---|
+  | Snapdragon 695 (`holi`) | Moto g45 5G, LineageOS 24 (Android 17) | [`holi.json`](app/src/main/assets/profiles/holi.json) |
 
-- Root (Magisk). The module ships its own `tinymix`, built from the source in `tools/tinymix`, and runs it from
-  the module's folder, which only root can write.
-- To be a privileged app: capturing call audio needs `CAPTURE_AUDIO_OUTPUT`.
-- To be the default phone app: that is how Android hands it the calls.
-- To be the default SMS app: Android shows an app its own sent messages only then. simbridge then stores
-  incoming and sent texts itself, in Android's own message store. **MMS is not supported** and is not fetched
-  while simbridge is the SMS app.
+- **A private network** between the phone and your other devices. [Tailscale](https://tailscale.com) is the
+  easy choice. Never expose the API to the internet: anyone who gets in can call and text as you.
+- **A computer** with `adb` (or ssh to a root shell on the phone) to set it up.
 
-## Build and install
+## Install
 
-```sh
-scripts/phone.sh build      # tests, APK, build/simbridge-magisk.zip
-scripts/phone.sh install    # installs the module; then reboot the phone
-scripts/phone.sh on         # after the reboot: permissions, root, default phone app
-scripts/phone.sh update     # later builds: replace the app, no reboot
-scripts/phone.sh web        # copy the web client to the server that serves it
-scripts/phone.sh log        # watch a call
-node scripts/client.mjs --answer --play hello.wav   # test client: answers, plays a WAV, records the caller
-scripts/phone.sh off        # give calls back to the previous phone app
+1. **Get the module.** Download `simbridge-magisk.zip` from the
+   [latest release](https://github.com/mukhtharcm/simbridge/releases/latest), or build it yourself
+   (see [Building from source](#building-from-source)).
+2. **Install it.** In the Magisk app: Modules, then Install from storage, then pick the zip. Or, with the phone
+   connected over `adb`:
+   ```sh
+   git clone https://github.com/mukhtharcm/simbridge && cd simbridge
+   scripts/phone.sh install path/to/simbridge-magisk.zip
+   ```
+3. **Reboot the phone.**
+4. **Switch it on.** This grants simbridge its permissions and root, makes it the phone and SMS app, and gives
+   the API a token, which it writes to `secrets/api.env` on your computer:
+   ```sh
+   scripts/phone.sh on
+   ```
+
+simbridge starts by itself after every reboot from then on.
+
+## Use it from your devices
+
+The API listens on one address of the phone, set by `BIND` in `secrets/api.env` (run `scripts/phone.sh on`
+again after changing it). Browsers only allow the microphone on `https://` pages and on `http://localhost`,
+which decides how you reach it.
+
+**From your phone and computers (recommended): one HTTPS address.** Run a reverse proxy that serves the
+`client/` folder and passes `/v0` through to the API. With [Caddy](https://caddyserver.com), on the phone or
+any machine on your private network:
+
+```
+sim.example.com {
+    reverse_proxy /v0 127.0.0.1:8088   # where the API listens
+    root * /path/to/simbridge/client
+    file_server
+}
 ```
 
-The signing key lives in `signing/` (not in git). Whatever is signed with it becomes a privileged app with root
-on the phone, so keep it private and use it for nothing else. To make one:
+Point `sim.example.com` at that machine's private address. Caddy needs a certificate for it; the
+[DNS challenge](https://caddyserver.com/docs/automatic-https#dns-challenge) works without opening anything to
+the internet. Then open the address, enter the token, and install the page as an app: Settings, then Install,
+in Chrome or Edge; Share, then Add to Home Screen, on iPhone.
+
+**From one computer only: no proxy.** Set `BIND` to the phone's Tailscale address, then on the computer:
+
+```sh
+python3 -m http.server 8765 --bind 127.0.0.1 --directory client
+```
+
+Open `http://localhost:8765`, enter the phone's address and port (`100.x.y.z:8088`) and the token.
+
+**Firewall the port.** Listening on a VPN address does not by itself keep the API off your home network:
+Linux answers for any of its addresses on any interface. Allow the API's port only from your private network,
+for example with Tailscale's range:
+
+```sh
+iptables -I INPUT -p tcp --dport 8088 -j DROP
+iptables -I INPUT -i tun+ -s 100.64.0.0/10 -p tcp --dport 8088 -j ACCEPT
+iptables -I INPUT -i lo -p tcp --dport 8088 -j ACCEPT
+```
+
+Android resets the firewall on reboot, so run this from a Magisk boot script (`/data/adb/service.d/`).
+
+## The web client
+
+- **Messages:** conversations, unread markers, replies, new conversations.
+- **Recents:** the phone's call history, with missed calls marked.
+- **Keypad,** and a **call screen** that minimizes to a bar so you can text during a call.
+- **Contact names.** The spare phone usually has no contacts, so the client can add them: name a number from
+  its conversation, or import a `.vcf` file exported from your phone or address book (Settings, Contacts). They
+  are saved in the phone's own contacts and stay on the phone.
+- **Notifications** for calls and texts, even with the client closed (Settings, Notifications). On iPhone this
+  needs the client installed to the Home Screen. They travel through your browser's push service (Google,
+  Apple or Mozilla) encrypted end to end, so only your browser can read them; the phone needs internet access
+  to send them.
+
+## What it changes on the phone
+
+- It becomes the **phone app** (to receive calls) and the **SMS app** (Android shows an app its own sent texts
+  only then). It stores incoming and sent texts itself, in Android's own message store.
+- **MMS is not supported.** An incoming MMS is not downloaded while simbridge is the SMS app.
+- The Magisk module installs the app as a privileged app (needed to capture call audio), sets the audio
+  properties that allow capture during calls, ships a `tinymix` built from [`tools/tinymix`](tools/tinymix), and
+  opens the app once after boot so Android grants it the microphone.
+- It gives the app root, which it uses for one thing: setting the audio mixer during calls.
+
+**Undo:** `scripts/phone.sh off` hands calls and texts back to the phone's own apps (set `OLD_DIALER` and
+`OLD_SMS` if yours differ). To remove simbridge, remove the module in the Magisk app and reboot.
+
+## The API
+
+One WebSocket with a token: JSON events and commands, and raw call audio as binary frames (16 kHz, mono,
+16-bit). See [docs/API.md](docs/API.md). [`scripts/client.mjs`](scripts/client.mjs) is a small command-line
+client that can answer, dial, play a sound file and record the caller.
+
+## Adding a phone
+
+Call audio needs a profile for the phone's chip in
+[`app/src/main/assets/profiles/`](app/src/main/assets/profiles): which mixer controls connect the call to the
+app, and in what order. simbridge picks the profile whose `platforms` list contains the phone's
+`ro.board.platform`.
+
+- **Qualcomm phones** are the likeliest to work: start from `holi.json`, rename the platform, and test a call.
+  Watch `scripts/phone.sh log`; it reports the caller's level each second.
+- [gsm2sip](https://github.com/pulpoff/gsm2sip)'s device profiles cover more chips (MediaTek, Exynos, Tensor),
+  and its README explains the audio paths. Its settings can be carried over into a profile here.
+
+A profile that works on your phone is a welcome pull request.
+
+## Building from source
+
+You need JDK 17 and the Android SDK (Android Studio has both), and Go for `tinymix`.
+
+```sh
+scripts/phone.sh build      # tests, the app, tinymix, and build/simbridge-magisk.zip
+scripts/phone.sh install    # installs that build; reboot, then: scripts/phone.sh on
+scripts/phone.sh update     # later builds, without a reboot
+scripts/phone.sh log        # follows simbridge's log
+```
+
+The app is signed with your own key, in `signing/` (not in git):
 
 ```sh
 keytool -genkeypair -keystore signing/release.jks -alias simbridge -keyalg RSA -validity 10000
 echo "password=<the password>" > signing/keystore.properties
 ```
 
-## The web client
+Whatever is signed with it becomes a privileged app with root on the phone, so keep it private. A build
+signed with a different key cannot update an installed one: remove the module and reboot first.
 
-The `client/` folder is the whole client: messages, a keypad, and a call screen that can be minimized to a
-bar while you do something else. It asks for the bridge's address and token once and keeps them in the browser.
-It can be installed as an app (Settings, then Install, in Chrome or Edge; Share, then Add to Home Screen, in
-Safari), and can show notifications for calls and texts while it is in the background. Browsers only allow the microphone on `https://` pages and on `http://localhost`, so:
-
-- **On the computer you are sitting at:** serve the folder locally and open it.
-  ```sh
-  python3 -m http.server 8765 --bind 127.0.0.1 --directory client
-  ```
-  Then open `http://localhost:8765`. The page talks to the bridge directly, so this computer must be able to
-  reach the bridge's address.
-- **On other devices, such as a phone:** put the page and the API behind one HTTPS address with a reverse proxy
-  you trust. Serve this folder at `/` and pass `/v0` through to the bridge; the page then finds the API at its
-  own address and only asks for the token. This is not set up by simbridge. With Caddy:
-  ```
-  sim.example.com {
-      reverse_proxy /v0 127.0.0.1:8088
-      root * /srv/simbridge/client
-      file_server
-  }
-  ```
-
-Closing the page during a call hangs up, if no other client is connected.
-
-## Undo
-
-`scripts/phone.sh off` gives calls back. To give SMS back, on the phone as root:
-`cmd role add-role-holder android.app.role.SMS com.android.messaging` (or whichever app had it).
-To remove simbridge, on the phone as root: `rm -rf /data/adb/modules/simbridge` and reboot.
+The phone is reached with `adb` by default. To use ssh instead, set `PHONE=<ssh host>` in `secrets/api.env`;
+the host must give a shell where `su` works.
 
 ## Licence and credits
 
-simbridge is MIT-licensed; see [LICENSE](LICENSE).
+MIT; see [LICENSE](LICENSE).
 
 - The mixer commands and the order of the audio set-up for Qualcomm phones come from
   [gsm2sip](https://github.com/pulpoff/gsm2sip) (MIT, © pulpoff).
-- `tools/tinymix` is gsm2sip's tinymix, unchanged, under its own MIT licence in that folder.
+- [`tools/tinymix`](tools/tinymix) is gsm2sip's tinymix, unchanged, under its own MIT licence in that folder.
 - The web client bundles the Bricolage Grotesque typeface (SIL Open Font License; see
   `client/bricolage-grotesque.LICENSE.txt`).
 
-**Use it on your own SIM, and mind your local law.** simbridge answers and places calls and texts as the SIM's
-owner, and call audio passes through it. Recording or relaying calls is regulated in many places.
+**Use it on your own SIM, and mind your local law.** simbridge answers and places calls and texts as the
+SIM's owner, and call audio passes through it. Recording or relaying calls is regulated in many places.

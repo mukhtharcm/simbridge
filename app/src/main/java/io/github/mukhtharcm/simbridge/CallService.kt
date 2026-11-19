@@ -15,6 +15,8 @@ import org.json.JSONObject
 class CallService : InCallService() {
     private var bridge: AudioBridge? = null
     @Volatile private var lastState = -1
+    private var incoming = false
+    private var answered = false
 
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) = handle(call, state)
@@ -26,6 +28,8 @@ class CallService : InCallService() {
         }
         Hub.newCall(call)
         lastState = -1
+        incoming = false
+        answered = false
         call.registerCallback(callback)
         @Suppress("DEPRECATION")
         handle(call, call.state)
@@ -47,15 +51,21 @@ class CallService : InCallService() {
         val event = JSONObject().put("event", "call").put("id", Hub.callId)
         val number = call.details?.handle?.schemeSpecificPart.orEmpty()
         when (state) {
-            Call.STATE_RINGING -> event.put("state", "ringing").put("direction", "in").put("number", number)
+            Call.STATE_RINGING -> {
+                incoming = true
+                Phonebook.named(this, event.put("state", "ringing").put("direction", "in").put("number", number))
+            }
             Call.STATE_DIALING, Call.STATE_CONNECTING ->
-                event.put("state", "dialing").put("direction", "out").put("number", number)
+                Phonebook.named(this, event.put("state", "dialing").put("direction", "out").put("number", number))
             // Reported once audio can flow, about two seconds after the answer, so clients can
             // start talking on "active" without their first words being lost.
-            Call.STATE_ACTIVE -> { event.put("state", "active"); startBridge { if (lastState == Call.STATE_ACTIVE) Hub.event(event) }; return }
+            Call.STATE_ACTIVE -> { answered = true; event.put("state", "active"); startBridge { if (lastState == Call.STATE_ACTIVE) Hub.event(event) }; return }
             Call.STATE_DISCONNECTED -> {
-                event.put("state", "ended")
-                    .put("reason", Rules.endReason(call.details?.disconnectCause?.code ?: -1))
+                val reason = Rules.endReason(call.details?.disconnectCause?.code ?: -1)
+                // A call that rang here and was never answered or declined was missed, whatever
+                // the network calls it (often "remote", when the caller gives up).
+                val missed = incoming && !answered && reason != "rejected"
+                event.put("state", "ended").put("reason", if (missed) "missed" else reason)
                 stopBridge()
             }
             else -> return

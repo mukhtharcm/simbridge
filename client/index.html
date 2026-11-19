@@ -98,11 +98,19 @@
   /* ---- messages ---- */
   #view-messages { flex-direction: row; }
   #list-pane, #thread-pane { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--surface); }
-  #threads { flex: 1; overflow-y: auto; margin: 0; padding: 0 0.5rem 0.5rem; list-style: none; }
-  #threads button { display: flex; gap: 0.75rem; align-items: center; width: 100%; text-align: left; padding: 0.6rem 0.5rem; border-radius: 14px; }
-  #threads button:hover { background: var(--bg); }
+  #threads, #calls { flex: 1; overflow-y: auto; margin: 0; padding: 0 0.5rem 0.5rem; list-style: none; }
+  #threads button, #calls .open { display: flex; gap: 0.75rem; align-items: center; width: 100%; text-align: left; padding: 0.6rem 0.5rem; border-radius: 14px; }
+  #threads button:hover, #calls .open:hover { background: var(--bg); }
   #threads button[aria-current="true"] { background: var(--gold-soft); }
-  #threads .body { flex: 1; min-width: 0; }
+  #threads .body, #calls .body { flex: 1; min-width: 0; }
+  #view-recents { background: var(--surface); }
+  #calls li { display: flex; align-items: center; gap: 0.25rem; padding-right: 0.25rem; }
+  #calls .open { flex: 1; min-width: 0; }
+  .kind { color: var(--soft); }
+  .missed .who span, .missed .kind { color: var(--red); }
+  #tabs .dot.red { background: var(--red); }
+  .bar h2 small { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--soft); letter-spacing: 0; }
+  #call-sub { color: rgb(255 255 255 / 0.75); margin-top: -0.35rem; }
   .who { display: flex; justify-content: space-between; gap: 0.75rem; font-weight: 650; font-size: 1.02rem; }
   .who time { font-weight: 400; color: var(--soft); font-size: 0.8125rem; white-space: nowrap; }
   .last { color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -165,9 +173,9 @@
   #call-buttons { display: flex; gap: 1.5rem; align-items: flex-start; }
   #call-buttons figure { margin: 0; display: grid; justify-items: center; gap: 0.35rem; font-size: 0.8125rem; color: rgb(255 255 255 / 0.8); }
 
-  #newsheet { border-radius: 20px; background: var(--surface); width: min(24rem, 100% - 2rem); }
-  #newsheet form { padding: 1.25rem; display: grid; gap: 0.9rem; }
-  #newsheet .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+  #newsheet, #namesheet { border-radius: 20px; background: var(--surface); width: min(24rem, 100% - 2rem); }
+  #newsheet form, #namesheet form { padding: 1.25rem; display: grid; gap: 0.9rem; }
+  #newsheet .actions, #namesheet .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
   #toast { position: fixed; left: 50%; bottom: calc(5rem + var(--safe-b)); transform: translateX(-50%); background: var(--night); color: #fff; padding: 0.6rem 1rem; border-radius: 12px; max-width: calc(100% - 2rem); z-index: 5; }
 
@@ -234,6 +242,7 @@
       <div class="bar" id="thread-head" hidden>
         <button class="icon-btn" id="back" aria-label="Back to conversations"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
         <h2 id="thread-title"></h2>
+        <button class="icon-btn" id="thread-name" aria-label="Save a name for this number"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg></button>
         <button class="icon-btn" id="thread-call" aria-label="Call this number"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></button>
       </div>
       <div id="messages"><p class="nothing">Pick a conversation, or start a new one with the plus button.</p></div>
@@ -244,8 +253,13 @@
     </div>
   </section>
 
+  <section class="view" id="view-recents" hidden>
+    <div class="bar"><h1>Recents</h1></div>
+    <ul id="calls" aria-label="Recent calls"></ul>
+  </section>
+
   <section class="view" id="view-keypad" hidden>
-    <input id="number" inputmode="tel" autocomplete="off" placeholder="Number" aria-label="Phone number">
+    <input id="number" list="people" inputmode="tel" autocomplete="off" placeholder="Number" aria-label="Phone number">
     <div class="pad" id="dial-pad"></div>
     <div class="pad-actions">
       <button class="icon-btn" id="dial-text" aria-label="Text this number"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
@@ -258,7 +272,8 @@
     <div class="bar"><h1>Settings</h1></div>
     <div class="rows">
       <div class="row"><div><b id="status-text">Connecting</b><p id="status-detail"></p></div><button class="btn quiet" id="forget">Disconnect</button></div>
-      <div class="row" id="notify-row"><div><b>Notifications</b><p id="notify-detail">Show incoming calls and texts when this app is in the background.</p></div><button class="btn" id="notify">Turn on</button></div>
+      <div class="row" id="notify-row"><div><b>Notifications</b><p id="notify-detail">Show calls and texts as notifications, even when this app is closed.</p></div><button class="btn quiet" id="notify-test" hidden>Send a test</button><button class="btn" id="notify">Turn on</button></div>
+      <div class="row"><div><b>Contacts</b><p id="contacts-detail">Import a contacts file (.vcf) from your phone or address book, so names show instead of numbers.</p></div><button class="btn" id="import">Import</button><input type="file" id="vcf" accept=".vcf,text/vcard,text/x-vcard" hidden></div>
       <div class="row" id="install-row" hidden><div><b>Install as an app</b><p>Opens in its own window, with its own icon.</p></div><button class="btn" id="install">Install</button></div>
       <div class="row" id="ios-row" hidden><div><b>Install as an app</b><p>In Safari, use Share, then “Add to Home Screen”.</p></div></div>
     </div>
@@ -266,6 +281,7 @@
 
   <nav id="tabs" role="tablist" aria-label="Sections">
     <button role="tab" data-view="messages" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Messages<i class="dot" id="unread-dot" hidden></i></button>
+    <button role="tab" data-view="recents" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Recents<i class="dot red" id="missed-dot" hidden></i></button>
     <button role="tab" data-view="keypad" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 5h.01M12 5h.01M18 5h.01M6 11h.01M12 11h.01M18 11h.01M6 17h.01M12 17h.01M18 17h.01" stroke-width="3"/></svg>Keypad</button>
     <button role="tab" data-view="settings" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Settings</button>
   </nav>
@@ -276,6 +292,7 @@
   <div class="who-big">
     <div id="voice"><div class="tile" id="call-tile"></div></div>
     <div id="call-number"></div>
+    <div id="call-sub"></div>
     <div id="call-state" aria-live="polite"></div>
   </div>
   <div class="pad" id="call-pad" hidden></div>
@@ -290,7 +307,7 @@
 <dialog id="newsheet" aria-labelledby="new-title">
   <form method="dialog" id="new-form">
     <h2 id="new-title">New message</h2>
-    <input id="new-number" inputmode="tel" autocomplete="off" placeholder="Phone number" aria-label="Phone number" required>
+    <input id="new-number" list="people" inputmode="tel" autocomplete="off" placeholder="Phone number" aria-label="Phone number" required>
     <div class="actions">
       <button class="btn quiet" type="button" id="new-cancel">Cancel</button>
       <button class="btn" type="submit">Start</button>
@@ -298,6 +315,19 @@
   </form>
 </dialog>
 
+<dialog id="namesheet" aria-labelledby="name-title">
+  <form method="dialog" id="name-form">
+    <h2 id="name-title">Name this number</h2>
+    <p class="hint" id="name-number"></p>
+    <input id="name-input" autocomplete="off" placeholder="Name" aria-label="Name" maxlength="100" required>
+    <div class="actions">
+      <button class="btn quiet" type="button" id="name-cancel">Cancel</button>
+      <button class="btn" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<datalist id="people"></datalist>
 <div id="toast" role="status" hidden></div>
 
 <script>
@@ -315,9 +345,19 @@ let audio = null, muted = false, ticker = null, callNote = null;
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 const clean = (n) => n.replace(/[\s()-]/g, '');
+// The last ten digits, so +91 98…, 098… and 98… match. Names from the phone itself match by its own
+// country rules; this only fills gaps, and at worst misses a name for numbers of other lengths.
 const digits = (n) => n.replace(/\D/g, '').slice(-10);
 const sameNumber = (a, b) => digits(a) === digits(b);
-const tileText = (n) => (/\d{2}$/.test(n) ? n.slice(-2) : (n.trim()[0] ?? '?').toUpperCase());
+const tileText = (n) => (/\d{2}$/.test(n) ? n.slice(-2)
+  : n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?');
+let people = new Map();          // last ten digits -> contact name
+const whoIs = (x) => x.name || people.get(digits(x.number ?? '')) || x.number || 'Unknown';
+// Per-browser conveniences only; the page works without them.
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
 
 let toastTimer;
 function toast(text) {
@@ -342,7 +382,7 @@ function connect() {
     opened = true; retry = 0;
     $('setup').hidden = true; $('app').hidden = false;
     status('Connected', address);
-    loadThreads();
+    loadThreads(); loadCalls(); loadContacts(); resubscribe();
   };
   socket.onmessage = ({ data }) => (typeof data === 'string' ? onMessage(JSON.parse(data)) : audio?.play(data));
   socket.onclose = () => {
@@ -409,6 +449,7 @@ function show(view) {
     $(`view-${tab.dataset.view}`).hidden = !on;
   }
   $('app').classList.toggle('reading', view === 'messages' && $('view-messages').classList.contains('reading'));
+  if (view === 'recents') { store.set(SEEN, String(Math.floor(Date.now() / 1000))); drawCalls(); }
 }
 for (const tab of document.querySelectorAll('#tabs button')) tab.onclick = () => show(tab.dataset.view);
 
@@ -440,9 +481,9 @@ function drawThreads() {
     const b = el('button', !t.out && !t.read ? 'unread' : '');
     if (open?.thread === t.thread) b.setAttribute('aria-current', 'true');
     const body = el('div', 'body'), who = el('div', 'who');
-    who.append(el('span', '', t.number || 'Unknown'), el('time', '', when(t.at)));
+    who.append(el('span', '', whoIs(t)), el('time', '', when(t.at)));
     body.append(who, el('div', 'last', (t.out ? 'You: ' : '') + t.text));
-    b.append(el('div', 'tile', tileText(t.number)), body);
+    b.append(el('div', 'tile', tileText(whoIs(t))), body);
     b.onclick = () => showMessages({ thread: t.thread, number: t.number });
     const li = el('li'); li.append(b); return li;
   }));
@@ -469,9 +510,10 @@ async function showMessages(target) {
   show('messages');
   $('view-messages').classList.add('reading'); $('app').classList.add('reading');
   $('thread-head').hidden = false;
-  $('thread-title').textContent = target.number || 'Unknown';
+  const name = whoIs(target);
+  $('thread-title').replaceChildren(name, ...(name !== target.number ? [el('small', '', target.number)] : []));
   const reachable = NUMBER.test(clean(target.number)); // short codes and named senders cannot be called or replied to
-  $('thread-call').hidden = !reachable; $('compose').hidden = !reachable;
+  $('thread-call').hidden = !reachable; $('compose').hidden = !reachable; $('thread-name').hidden = !reachable;
   const box = $('messages');
   drawThreads();
   if (!target.thread) { box.replaceChildren(el('p', 'nothing', `Write the first message to ${target.number}.`)); $('text').focus(); return; }
@@ -493,7 +535,7 @@ function onSms(m) {
     const box = $('messages'), b = bubble(m); b.classList.add('new'); box.append(b); box.scrollTop = box.scrollHeight;
     if (!m.out && reading) { ask({ cmd: 'sms_read', thread: m.thread }); m.read = true; }
   }
-  if (!m.out && !reading) notify(m.number || 'New text', m.text, `sms-${m.thread}`, () => showMessages({ thread: m.thread, number: m.number }));
+  if (!m.out && !reading) notify(whoIs(m), m.text, `sms-${m.thread}`, () => showMessages({ thread: m.thread, number: m.number }));
   drawThreads();
 }
 
@@ -519,10 +561,114 @@ $('new').onclick = () => { $('new-number').value = ''; $('newsheet').showModal()
 $('new-cancel').onclick = () => $('newsheet').close();
 $('new-form').onsubmit = () => textTo($('new-number').value);
 
+// Giving a number a name, stored in the phone's own contacts.
+$('thread-name').onclick = () => {
+  $('name-number').textContent = open.number;
+  $('name-input').value = whoIs(open) === open.number ? '' : whoIs(open);
+  $('namesheet').showModal();
+};
+$('name-cancel').onclick = () => $('namesheet').close();
+$('name-form').onsubmit = async () => {
+  const name = $('name-input').value.trim(), target = open;
+  const reply = await ask({ cmd: 'contact_save', number: clean(target.number), name });
+  if (!reply.ok) return toast(`Not saved: ${explain(reply.error)}`);
+  toast('Name saved');
+  target.name = name;
+  await loadContacts(); loadThreads(); loadCalls();
+  if (open === target) showMessages(target);
+};
+
+async function loadContacts() {
+  const reply = await ask({ cmd: 'contacts' });
+  if (!reply.ok) return;
+  people = new Map(reply.contacts.map((c) => [digits(c.number), c.name]));
+  $('people').replaceChildren(...reply.contacts.map((c) => { const o = el('option'); o.value = clean(c.number); o.label = c.name; return o; }));
+  $('contacts-detail').textContent = people.size
+    ? `${people.size} numbers have names. Import a contacts file (.vcf) to add more.`
+    : 'Import a contacts file (.vcf) from your phone or address book, so names show instead of numbers.';
+  drawThreads(); drawCalls();
+}
+
+// A .vcf from iPhone, Android, Google or macOS Contacts: the name and phone numbers of each card.
+function parseVcf(text) {
+  const out = [];
+  let card = null;
+  for (const line of text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)) {
+    const at = line.indexOf(':');
+    if (at < 0) continue;
+    const key = line.slice(0, at).split(';')[0].split('.').pop().toUpperCase(), value = line.slice(at + 1).trim();
+    const unescape = (v) => v.replace(/\\(.)/g, '$1');
+    if (key === 'BEGIN') card = { name: '', numbers: [] };
+    else if (key === 'END' && card) { if (card.name && card.numbers.length) out.push(card); card = null; }
+    else if (!card) continue;
+    else if (key === 'FN' && value) card.name = unescape(value);
+    else if (key === 'N' && !card.name) card.name = unescape(value.split(';').slice(0, 2).reverse().join(' ')).trim();
+    else if (key === 'TEL') {
+      const n = value.replace(/^tel:/i, '').replace(/[^\d+]/g, '');
+      if (n.length >= 3) card.numbers.push(n);
+    }
+  }
+  return out;
+}
+$('import').onclick = () => $('vcf').click();
+$('vcf').onchange = async () => {
+  const file = $('vcf').files[0];
+  $('vcf').value = '';
+  if (!file) return;
+  const cards = parseVcf(await file.text());
+  if (!cards.length) return toast('No contacts with phone numbers in that file');
+  let added = 0;
+  for (let i = 0; i < cards.length; i += 500) {
+    const reply = await ask({ cmd: 'contacts_import', contacts: cards.slice(i, i + 500) });
+    if (!reply.ok) return toast(`Import stopped: ${explain(reply.error)}`);
+    added += reply.added;
+  }
+  toast(`Added ${added} contacts. ${cards.length - added} were on the phone already.`);
+  await loadContacts(); loadThreads(); loadCalls();
+};
+
+// ---- recent calls --------------------------------------------------------------------------------
+
+let recents = [];
+const SEEN = 'simbridge.callsSeen';
+const length = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+async function loadCalls() {
+  const reply = await ask({ cmd: 'calls', limit: 100 });
+  if (!reply.ok) return;
+  recents = reply.calls;
+  drawCalls();
+}
+
+function drawCalls() {
+  const seen = Number(store.get(SEEN) ?? 0);
+  $('missed-dot').hidden = !recents.some((c) => c.missed && c.at > seen);
+  if (!recents.length) return $('calls').replaceChildren(el('p', 'nothing', 'No calls yet. Calls you make and get show here.'));
+  $('calls').replaceChildren(...recents.map((c) => {
+    const name = whoIs(c), li = el('li', c.missed ? 'missed' : '');
+    const open = el('button', 'open'), body = el('div', 'body'), who = el('div', 'who');
+    who.append(el('span', '', name), el('time', '', when(c.at)));
+    const kind = c.missed ? 'Missed' : c.rejected ? 'Declined'
+      : `${c.direction === 'out' ? 'Outgoing' : 'Incoming'}, ${length(c.duration)}`;
+    body.append(who, el('div', 'kind', kind));
+    open.append(el('div', 'tile', tileText(name)), body);
+    open.setAttribute('aria-label', `${name}, ${kind}. Open the conversation`);
+    open.onclick = () => textTo(c.number);
+    const again = el('button', 'icon-btn');
+    again.innerHTML = $('thread-call').innerHTML;
+    again.setAttribute('aria-label', `Call ${name}`);
+    again.hidden = !NUMBER.test(clean(c.number));
+    again.onclick = () => dial(c.number);
+    li.append(open, again);
+    return li;
+  }));
+}
+
 const explain = (error) => ({
   bad_number: 'that is not a phone number', bad_text: 'the message is empty or too long', busy: 'a call is already up',
   no_permission: 'simbridge lacks a permission on the phone', no_such_call: 'the call is already over',
-  not_connected: 'the phone is not connected',
+  not_connected: 'the phone is not connected', bad_name: 'the name is empty or too long',
+  bad_endpoint: 'this browser’s push service is not supported', too_many: 'the file has more than 5000 contacts',
 }[error] ?? error);
 
 // ---- keypad ----------------------------------------------------------------------------------
@@ -557,13 +703,18 @@ async function dial(raw) {
 }
 
 function onCall(msg) {
-  if (msg.state === 'ended') { if (!call || !call.id || call.id === msg.id) endCall(); return; }
+  if (msg.state !== 'ringing') closeNotes('call');
+  if (msg.state === 'ended') {
+    if (!call || !call.id || call.id === msg.id) endCall();
+    setTimeout(loadCalls, 1500); // the phone writes its call log just after the call
+    return;
+  }
   const isNew = !call || (call.id && call.id !== msg.id);
   call = { ...(isNew ? {} : call), ...msg };
   if (msg.state === 'active' && !call.since) call.since = Date.now();
   ring(msg.state === 'ringing');
   if (msg.state === 'ringing') {
-    callNote = notify('Incoming call', call.number || 'Unknown caller', 'call', () => drawCall(true), true);
+    callNote = notify('Incoming call', whoIs(call), 'call', () => drawCall(true), true);
   } else { callNote?.close(); callNote = null; }
   drawCall(isNew || msg.state === 'ringing');
 }
@@ -575,7 +726,7 @@ function drawCall(expand) {
   if (expand && !sheet.open) { $('newsheet').close(); sheet.showModal(); }
   $('callbar').hidden = sheet.open;
   const ringing = call.state === 'ringing', active = call.state === 'active';
-  const number = call.number || 'Unknown caller';
+  const number = call.number ? whoIs(call) : 'Unknown caller';
   const label = () => {
     if (ringing) return 'Incoming call';
     if (!active) return 'Calling';
@@ -587,6 +738,7 @@ function drawCall(expand) {
   $('callbar').className = ringing ? 'ringing' : '';
   $('call-number').textContent = number; $('bar-number').textContent = number;
   $('call-tile').textContent = tileText(number);
+  $('call-sub').textContent = number !== call.number ? call.number ?? '' : '';
   $('f-answer').hidden = !ringing;
   $('f-mute').hidden = $('f-keys').hidden = !active;
   if (!active) { $('call-pad').hidden = true; $('keys').setAttribute('aria-expanded', 'false'); }
@@ -629,8 +781,26 @@ $('bar-end').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.pr
 
 // ---- notifications and installing ---------------------------------------------------------------
 
+// Push brings calls and texts while the app is closed. Without it, the page shows notifications
+// itself, but only while it is open in the background.
+let swReg = null, pushKey = null, pushOn = false;
+const keyBytes = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+const sameKey = (a, b) => a && b && a.byteLength === b.byteLength && new Uint8Array(a).every((x, i) => x === b[i]);
+
+async function resubscribe() {
+  if (!swReg?.pushManager) return drawNotify();
+  const k = await ask({ cmd: 'push_key' });
+  if (k.ok) pushKey = k.key;
+  const sub = await swReg.pushManager.getSubscription();
+  // A subscription made for another bridge key (the bridge was reinstalled) can no longer be used.
+  if (sub && pushKey && !sameKey(sub.options.applicationServerKey, keyBytes(pushKey))) { await sub.unsubscribe(); pushOn = false; }
+  else if (sub) { pushOn = (await ask({ cmd: 'push_subscribe', subscription: sub.toJSON() })).ok; }
+  drawNotify();
+}
+function closeNotes(tag) { swReg?.getNotifications?.({ tag }).then((ns) => ns.forEach((n) => n.close())).catch(() => {}); }
+
 function notify(title, body, tag, onClick, sticky = false) {
-  if (!document.hidden || !('Notification' in window) || Notification.permission !== 'granted') return null;
+  if (pushOn || !document.hidden || !('Notification' in window) || Notification.permission !== 'granted') return null;
   try {
     const n = new Notification(title, { body, tag, icon: 'icon-192.png', requireInteraction: sticky });
     n.onclick = () => { window.focus(); onClick(); n.close(); };
@@ -639,12 +809,36 @@ function notify(title, body, tag, onClick, sticky = false) {
 }
 function drawNotify() {
   if (!('Notification' in window)) { $('notify-row').hidden = true; return; }
-  const p = Notification.permission;
-  $('notify').hidden = p !== 'default';
-  if (p === 'granted') $('notify-detail').textContent = 'On. Incoming calls and texts show a notification when this app is in the background.';
-  if (p === 'denied') $('notify-detail').textContent = 'Blocked for this site. Allow notifications in the browser’s site settings to turn them on.';
+  const p = Notification.permission, canPush = !!(swReg?.pushManager && pushKey);
+  $('notify').hidden = pushOn || p === 'denied' || (p === 'granted' && !canPush);
+  $('notify-test').hidden = !pushOn;
+  $('notify-detail').textContent =
+    pushOn ? 'On. Calls and texts show a notification even when this app is closed.'
+    : p === 'denied' ? 'Blocked for this site. Allow notifications in the browser’s site settings, then turn them on here.'
+    : p === 'granted' && !canPush ? 'On while this app is open in the background.'
+    : 'Show calls and texts as notifications, even when this app is closed.';
 }
-$('notify').onclick = async () => { await Notification.requestPermission(); drawNotify(); };
+$('notify').onclick = async () => {
+  if (swReg?.pushManager && pushKey) {
+    try {
+      // Called first in the click: Safari only allows it while handling one, and it asks permission itself.
+      const sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(pushKey) });
+      const reply = await ask({ cmd: 'push_subscribe', subscription: sub.toJSON() });
+      if (!reply.ok) throw new Error(explain(reply.error));
+      pushOn = true;
+      toast('Notifications are on');
+    } catch (e) {
+      toast(Notification.permission === 'denied' ? 'Notifications are blocked for this site' : `Notifications could not be turned on: ${e.message}`);
+    }
+  } else {
+    await Notification.requestPermission();
+  }
+  drawNotify();
+};
+$('notify-test').onclick = async () => {
+  const reply = await ask({ cmd: 'push_test' });
+  toast(reply.ok ? 'Test sent. It should arrive within a few seconds.' : 'Could not send a test');
+};
 drawNotify();
 
 let installer = null;
@@ -653,7 +847,12 @@ addEventListener('appinstalled', () => { $('install-row').hidden = true; });
 $('install').onclick = async () => { await installer?.prompt(); installer = null; $('install-row').hidden = true; };
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 $('ios-row').hidden = !(/iPhone|iPad/.test(navigator.userAgent) && !standalone);
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then((reg) => {
+    swReg = reg;
+    if (ws?.readyState === 1) resubscribe(); else drawNotify();
+  }).catch(() => {});
+}
 
 // ---- sound -----------------------------------------------------------------------------------
 

@@ -1,18 +1,37 @@
 #!/bin/sh
-# Build, install and drive simbridge on the phone. Usage: scripts/phone.sh <build|install|update|on|off|web|log>
+# Build, install and set up simbridge. Usage: scripts/phone.sh <command>
 #
-# PHONE is an ssh host that lands in a shell where `su` works (Termux sshd on the phone).
-# OLD_DIALER is the phone app that gets calls back when simbridge is switched off.
+#   build          runs the tests, builds the app and tinymix, and makes build/simbridge-magisk.zip
+#   install [zip]  installs the Magisk module (this build, or a downloaded release); reboot afterwards
+#   on             after that reboot: permissions, root, the API's address and token, phone and SMS app
+#   update         puts a new build over the installed one, without a reboot
+#   off            gives calls and texts back to the phone's own apps
+#   web            copies the web client to WEB, an rsync destination
+#   log            follows simbridge's log
+#
+# The phone is reached with adb, or with PHONE=<ssh host> over ssh to a shell where `su` works.
+# Settings live in secrets/api.env; see the README.
 set -eu
 cd "$(dirname "$0")/.."
+[ -f secrets/api.env ] && . ./secrets/api.env
 
-PHONE=${PHONE:-moto}
+PHONE=${PHONE:-adb}
 OLD_DIALER=${OLD_DIALER:-com.android.dialer}
+OLD_SMS=${OLD_SMS:-com.android.messaging}
 PKG=io.github.mukhtharcm.simbridge
 ZIP=build/simbridge-magisk.zip
+TMP=/data/local/tmp
 
-# Runs stdin as a root shell script on the phone.
-root() { ssh "$PHONE" 'su -c sh'; }
+# root runs stdin as a root shell script on the phone; put copies a file there as $TMP/sb-<name>.
+if [ "$PHONE" = adb ]; then
+    root() { adb shell su -c sh; }
+    put() { adb push "$1" "$TMP/sb-$(basename "$1")" >/dev/null; }
+    logs() { adb logcat -b main -v time -s simbridge; }
+else
+    root() { ssh "$PHONE" 'su -c sh'; }
+    put() { ssh "$PHONE" "su -c 'cat > $TMP/sb-$(basename "$1")'" < "$1"; }
+    logs() { ssh "$PHONE" "su -c 'logcat -b main -v time -s simbridge'"; }
+fi
 
 case "${1:-}" in
 build)
@@ -26,46 +45,43 @@ build)
     echo "built $ZIP"
     ;;
 install)
-    # Installs the module. It takes effect at the next reboot, which this does not do.
-    scp -q "$ZIP" "$PHONE:simbridge-magisk.zip"
+    Z=${2:-$ZIP}
+    put "$Z"
     root <<EOF
-cp /data/data/com.termux/files/home/simbridge-magisk.zip /data/local/tmp/simbridge-magisk.zip
-magisk --install-module /data/local/tmp/simbridge-magisk.zip
-rm /data/local/tmp/simbridge-magisk.zip
+magisk --install-module $TMP/sb-$(basename "$Z")
+rm $TMP/sb-$(basename "$Z")
 EOF
     echo "installed; reboot the phone, then run: scripts/phone.sh on"
     ;;
 update)
-    # A new build over the installed one. No reboot: same package, same key.
-    scp -q app/build/outputs/apk/release/app-release.apk "$PHONE:simbridge.apk"
-    scp -q build/module/tinymix build/module/service.sh "$PHONE:"
+    put app/build/outputs/apk/release/app-release.apk
+    put build/module/tinymix
+    put build/module/service.sh
     root <<EOF
 set -e
 M=/data/adb/modules/simbridge
-cp /data/data/com.termux/files/home/tinymix /data/data/com.termux/files/home/service.sh \$M/
+cp $TMP/sb-tinymix \$M/tinymix
+cp $TMP/sb-service.sh \$M/service.sh
 chown root:root \$M/tinymix \$M/service.sh && chmod 755 \$M/tinymix \$M/service.sh
-rm /data/data/com.termux/files/home/tinymix /data/data/com.termux/files/home/service.sh
-cp /data/data/com.termux/files/home/simbridge.apk /data/local/tmp/simbridge.apk
-pm install -r /data/local/tmp/simbridge.apk
-cp /data/local/tmp/simbridge.apk /data/adb/modules/simbridge/system/priv-app/Simbridge/Simbridge.apk
-rm /data/local/tmp/simbridge.apk
+pm install -r $TMP/sb-app-release.apk
+cp $TMP/sb-app-release.apk \$M/system/priv-app/Simbridge/Simbridge.apk
+rm $TMP/sb-tinymix $TMP/sb-service.sh $TMP/sb-app-release.apk
 dumpsys package $PKG | grep -m1 versionName
 EOF
     ;;
 on)
-    # Permissions, root, the API's address and token, and make simbridge the phone app.
-    # secrets/api.env holds BIND, PORT and TOKEN. BIND is one address of the phone; 127.0.0.1 keeps the
-    # API on the phone itself, for a web server there to pass through. It may also hold URL (the bridge
-    # as this computer reaches it, for scripts/client.mjs) and WEB (where `web` copies the client).
+    # BIND is the phone address the API listens on: 127.0.0.1 for a web server on the phone to pass
+    # through, or the phone's VPN address. TOKEN is made here the first time.
     mkdir -p secrets
-    [ -f secrets/api.env ] ||
+    if [ ! -f secrets/api.env ]; then
         printf 'BIND=127.0.0.1\nPORT=8088\nTOKEN=%s\n' "$(openssl rand -hex 24)" > secrets/api.env
+        . ./secrets/api.env
+    fi
     chmod 600 secrets/api.env
-    . ./secrets/api.env
     root <<EOF
 set -e
 pm path $PKG >/dev/null || { echo "simbridge is not installed; did the phone reboot after install?"; exit 1; }
-for p in RECORD_AUDIO READ_PHONE_STATE ANSWER_PHONE_CALLS CALL_PHONE POST_NOTIFICATIONS READ_SMS SEND_SMS RECEIVE_SMS; do
+for p in RECORD_AUDIO READ_PHONE_STATE ANSWER_PHONE_CALLS CALL_PHONE POST_NOTIFICATIONS READ_SMS SEND_SMS RECEIVE_SMS READ_CALL_LOG READ_CONTACTS WRITE_CONTACTS; do
     pm grant $PKG android.permission.\$p
 done
 appops set --uid $PKG RECORD_AUDIO allow
@@ -94,25 +110,23 @@ echo "SMS app is now: \$(cmd role get-role-holders android.app.role.SMS)"
 EOF
     ;;
 off)
-    # Gives calls back. SMS stays with simbridge; see the README's Undo to hand that back too.
+    # OLD_DIALER and OLD_SMS name the apps that take calls and texts back.
     root <<EOF
 cmd role add-role-holder android.app.role.DIALER $OLD_DIALER
+cmd role add-role-holder android.app.role.SMS $OLD_SMS || echo "could not hand SMS to $OLD_SMS; set OLD_SMS to your SMS app"
 echo "phone app is now: \$(cmd role get-role-holders android.app.role.DIALER)"
+echo "SMS app is now: \$(cmd role get-role-holders android.app.role.SMS)"
 EOF
     ;;
 web)
-    # Copies the web client to where a web server serves it. WEB in secrets/api.env is an rsync
-    # destination, such as myserver:/srv/simbridge/client/.
-    . ./secrets/api.env
     [ -n "${WEB:-}" ] || { echo "set WEB in secrets/api.env first"; exit 1; }
     rsync -a --delete client/ "$WEB"
     echo "client copied to $WEB"
     ;;
 log)
-    # Main buffer only: the kernel buffer on some phones is flooded and slow to read.
-    ssh "$PHONE" "su -c 'logcat -b main -v time -s simbridge'"
+    logs
     ;;
 *)
-    sed -n '2,5p' "$0"; exit 1
+    sed -n '2,13p' "$0"; exit 1
     ;;
 esac

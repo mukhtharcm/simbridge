@@ -171,7 +171,7 @@ object Sms {
         }
     }
 
-    private fun message(c: Cursor) = JSONObject()
+    private fun message(c: Cursor) = Phonebook.named(app, JSONObject()
         .put("id", "m${c.getLong(0)}")
         .put("thread", "t${c.getLong(1)}")
         .put("number", c.getString(2).orEmpty())
@@ -179,7 +179,7 @@ object Sms {
         .put("at", c.getLong(4) / 1000)
         .put("out", c.getInt(5) != TYPE_INBOX)
         .put("failed", c.getInt(5) == TYPE_FAILED)
-        .put("read", c.getInt(6) != 0)
+        .put("read", c.getInt(6) != 0))
 
     private fun <T> query(where: String?, args: Array<String>?, order: String, row: (Cursor) -> T): List<T> {
         val out = ArrayList<T>()

@@ -17,9 +17,9 @@ class PcmTest {
     }
 
     @Test fun onlyPlainNumbersCanBeDialled() {
-        assertTrue(Rules.dialable("+911234567890"))
+        assertTrue(Rules.dialable("+15550100123"))
         assertTrue(Rules.dialable("100"))
-        for (bad in listOf("**21*123#", "*123#", "12", "+91 12345", "1234;rm", "")) assertFalse(bad, Rules.dialable(bad))
+        for (bad in listOf("**21*123#", "*123#", "12", "+1 555 0100", "1234;rm", "")) assertFalse(bad, Rules.dialable(bad))
     }
 
     @Test fun smsTextMustBeNonEmptyAndBounded() {

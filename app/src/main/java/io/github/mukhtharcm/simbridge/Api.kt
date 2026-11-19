@@ -76,10 +76,19 @@ object Hub {
         return "c${++calls}".also { callId = it }
     }
 
+    /** The call as a client joining now should see it: every field reported so far. */
+    @Volatile private var callState: JSONObject? = null
+
     fun event(json: JSONObject) {
         // The phone's log is readable by other apps with log access: no numbers, no message text.
         Log.i(TAG, "event ${json.optString("event")} ${json.optString("id")} ${json.optString("state")}${json.optString("status")}")
+        if (json.optString("event") == "call") {
+            callState = if (json.optString("state") == "ended") null else JSONObject(
+                (callState?.takeIf { it.optString("id") == json.optString("id") } ?: JSONObject()).toString(),
+            ).also { merged -> json.keys().forEach { merged.put(it, json.get(it)) } }
+        }
         server?.broadcast(json.toString())
+        Push.forEvent(json)
     }
 
     /** A frame of the caller's voice, on its way to the clients. */
@@ -111,6 +120,7 @@ object Hub {
                 start()
             }
             Sms.start(app)
+            Push.start(app)
         }
     }
 
@@ -129,6 +139,8 @@ object Hub {
         override fun onError(conn: WebSocket?, e: Exception) { Log.w(TAG, "API error: $e") }
         override fun onOpen(conn: WebSocket, handshake: ClientHandshake) {
             Log.i(TAG, "client connected: ${conn.remoteSocketAddress}")
+            // A client that opens during a call, say from a notification, sees it at once.
+            callState?.let { conn.send(it.toString()) }
         }
 
         override fun onClose(conn: WebSocket, code: Int, reason: String, remote: Boolean) {
@@ -195,6 +207,31 @@ object Hub {
                 reply.put("id", Sms.send(to, text, msg.opt("ref")))
             }
             "sms_read" -> Sms.markRead(msg.getString("thread"))
+            "calls" -> reply.put("calls", Phonebook.calls(app, msg.optInt("limit", 100)))
+            "contacts" -> reply.put("contacts", Phonebook.contacts(app))
+            "contact_save" -> {
+                val number = msg.getString("number").filter { it.isDigit() || it == '+' }
+                val name = msg.getString("name").trim()
+                if (!Rules.dialable(number)) return "bad_number"
+                if (name.isEmpty() || name.length > 100) return "bad_name"
+                Phonebook.save(app, number, name)
+            }
+            "contacts_import" -> {
+                val list = msg.getJSONArray("contacts")
+                if (list.length() > 5000) return "too_many"
+                val people = (0 until list.length()).mapNotNull { i ->
+                    val c = list.getJSONObject(i)
+                    val name = c.optString("name").trim().take(100)
+                    val nums = c.optJSONArray("numbers") ?: return@mapNotNull null
+                    val numbers = (0 until nums.length()).map { nums.getString(it).filter { ch -> ch.isDigit() || ch == '+' } }
+                        .filter(Rules::dialable).distinct()
+                    if (name.isEmpty() || numbers.isEmpty()) null else name to numbers
+                }
+                reply.put("added", Phonebook.import(app, people))
+            }
+            "push_key" -> reply.put("key", Push.publicKey())
+            "push_subscribe" -> return Push.subscribe(msg.getJSONObject("subscription"))
+            "push_test" -> reply.put("sent", Push.send("simbridge", "Notifications are working.", "test", urgent = false, ttlSeconds = 60))
             "sms_threads" -> reply.put("threads", Sms.threads())
             "sms_messages" -> reply.put(
                 "messages",
