@@ -77,7 +77,8 @@ object Hub {
     }
 
     fun event(json: JSONObject) {
-        Log.i(TAG, "event $json")
+        // The phone's log is readable by other apps with log access: no numbers, no message text.
+        Log.i(TAG, "event ${json.optString("event")} ${json.optString("id")} ${json.optString("state")}${json.optString("status")}")
         server?.broadcast(json.toString())
     }
 

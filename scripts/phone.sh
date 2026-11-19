@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build, install and drive simbridge on the phone. Usage: scripts/phone.sh <build|install|update|on|off|log>
+# Build, install and drive simbridge on the phone. Usage: scripts/phone.sh <build|install|update|on|off|web|log>
 #
 # PHONE is an ssh host that lands in a shell where `su` works (Termux sshd on the phone).
 # OLD_DIALER is the phone app that gets calls back when simbridge is switched off.
@@ -54,8 +54,9 @@ EOF
     ;;
 on)
     # Permissions, root, the API's address and token, and make simbridge the phone app.
-    # secrets/api.env holds BIND, PORT and TOKEN. BIND is one address of the phone;
-    # 127.0.0.1 keeps the API on the phone itself.
+    # secrets/api.env holds BIND, PORT and TOKEN. BIND is one address of the phone; 127.0.0.1 keeps the
+    # API on the phone itself, for a web server there to pass through. It may also hold URL (the bridge
+    # as this computer reaches it, for scripts/client.mjs) and WEB (where `web` copies the client).
     mkdir -p secrets
     [ -f secrets/api.env ] ||
         printf 'BIND=127.0.0.1\nPORT=8088\nTOKEN=%s\n' "$(openssl rand -hex 24)" > secrets/api.env
@@ -98,6 +99,14 @@ off)
 cmd role add-role-holder android.app.role.DIALER $OLD_DIALER
 echo "phone app is now: \$(cmd role get-role-holders android.app.role.DIALER)"
 EOF
+    ;;
+web)
+    # Copies the web client to where a web server serves it. WEB in secrets/api.env is an rsync
+    # destination, such as myserver:/srv/simbridge/client/.
+    . ./secrets/api.env
+    [ -n "${WEB:-}" ] || { echo "set WEB in secrets/api.env first"; exit 1; }
+    rsync -a --delete client/ "$WEB"
+    echo "client copied to $WEB"
     ;;
 log)
     # Main buffer only: the kernel buffer on some phones is flooded and slow to read.

@@ -4,7 +4,7 @@
 //   node scripts/client.mjs [--answer] [--dial NUMBER] [--play FILE.wav] [--dtmf DIGITS] [--hangup-after SECONDS]
 //
 // Prints every event, records the caller to recordings/<time>.wav, and with --play sends a
-// 16 kHz mono 16-bit WAV into the call once it is active. Reads BIND, PORT and TOKEN from secrets/api.env.
+// 16 kHz mono 16-bit WAV into the call once it is active. Reads the bridge's address and TOKEN from secrets/api.env.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const args = process.argv.slice(2);
@@ -22,7 +22,8 @@ const heard = [];
 let callId = null;
 let sender = null;
 
-const ws = new WebSocket(`ws://${env.BIND}:${env.PORT}/v0?token=${env.TOKEN}`);
+// URL is the bridge as this computer reaches it, such as wss://sim.example.com; without it, BIND and PORT are used.
+const ws = new WebSocket(`${env.URL ?? `ws://${env.BIND}:${env.PORT}`}/v0?token=${env.TOKEN}`);
 ws.binaryType = 'arraybuffer';
 const send = (cmd) => { console.log('>', JSON.stringify(cmd)); ws.send(JSON.stringify(cmd)); };
 

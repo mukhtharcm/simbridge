@@ -374,7 +374,7 @@ function status(text, detail) { $('status-text').textContent = text; $('status-d
 
 function showSetup(problem) {
   $('app').hidden = true; $('setup').hidden = false;
-  $('address').value = localStorage.getItem('simbridge.address') ?? '';
+  $('address').value = localStorage.getItem('simbridge.address') ?? (location.protocol === 'https:' ? location.host : '');
   $('setup-problem').textContent = problem;
 }
 
@@ -382,7 +382,8 @@ $('setup').onsubmit = (e) => {
   e.preventDefault();
   // People paste web addresses; the bridge wants host:port, so turn http(s):// into ws(s)://.
   const address = $('address').value.trim().replace(/^http/, 'ws').replace(/\/+$/, '');
-  if (address.replace(/^wss?:\/\//, '') === location.host) {
+  // Served over https, the page and the API can share one address. From http://localhost they cannot.
+  if (location.protocol !== 'https:' && address.replace(/^wss?:\/\//, '') === location.host) {
     $('setup-problem').textContent = "That is this page's own address. Enter the phone's, such as 100.64.0.5:8088.";
     return;
   }

@@ -43,6 +43,7 @@ scripts/phone.sh build      # tests, APK, build/simbridge-magisk.zip
 scripts/phone.sh install    # installs the module; then reboot the phone
 scripts/phone.sh on         # after the reboot: permissions, root, default phone app
 scripts/phone.sh update     # later builds: replace the app, no reboot
+scripts/phone.sh web        # copy the web client to the server that serves it
 scripts/phone.sh log        # watch a call
 node scripts/client.mjs --answer --play hello.wav   # test client: answers, plays a WAV, records the caller
 scripts/phone.sh off        # give calls back to the previous phone app
@@ -70,7 +71,15 @@ Safari), and can show notifications for calls and texts while it is in the backg
   Then open `http://localhost:8765`. The page talks to the bridge directly, so this computer must be able to
   reach the bridge's address.
 - **On other devices, such as a phone:** put the page and the API behind one HTTPS address with a reverse proxy
-  you trust (the page then connects with `wss://`). This is not set up by simbridge.
+  you trust. Serve this folder at `/` and pass `/v0` through to the bridge; the page then finds the API at its
+  own address and only asks for the token. This is not set up by simbridge. With Caddy:
+  ```
+  sim.example.com {
+      reverse_proxy /v0 127.0.0.1:8088
+      root * /srv/simbridge/client
+      file_server
+  }
+  ```
 
 Closing the page during a call hangs up, if no other client is connected.
 
