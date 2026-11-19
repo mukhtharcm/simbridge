@@ -98,9 +98,10 @@ Android resets the firewall on reboot, so run this from a Magisk boot script (`/
 
 - **Messages:** conversations, unread markers, replies, new conversations.
 - **Recents:** the phone's call history, with missed calls marked.
+- **Contacts:** search by name or number, then call or text; add contacts with the plus button.
 - **Keypad,** and a **call screen** that minimizes to a bar so you can text during a call.
-- **Contact names.** The spare phone usually has no contacts, so the client can add them: name a number from
-  its conversation, or import a `.vcf` file exported from your phone or address book (Settings, Contacts). They
+- **Contact names.** The spare phone usually has no contacts, so the client can add them: add one in Contacts, name a
+  number from its conversation, or import a `.vcf` file exported from your phone or address book (Settings, Contacts). They
   are saved in the phone's own contacts and stay on the phone.
 - **Notifications** for calls and texts, even with the client closed (Settings, Notifications). On iPhone this
   needs the client installed to the Home Screen. They travel through your browser's push service (Google,

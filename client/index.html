@@ -98,14 +98,15 @@
   /* ---- messages ---- */
   #view-messages { flex-direction: row; }
   #list-pane, #thread-pane { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--surface); }
-  #threads, #calls { flex: 1; overflow-y: auto; margin: 0; padding: 0 0.5rem 0.5rem; list-style: none; }
-  #threads button, #calls .open { display: flex; gap: 0.75rem; align-items: center; width: 100%; text-align: left; padding: 0.6rem 0.5rem; border-radius: 14px; }
-  #threads button:hover, #calls .open:hover { background: var(--bg); }
+  #threads, #calls, #contact-list { flex: 1; overflow-y: auto; margin: 0; padding: 0 0.5rem 0.5rem; list-style: none; }
+  #threads button, #calls .open, #contact-list .open { display: flex; gap: 0.75rem; align-items: center; width: 100%; text-align: left; padding: 0.6rem 0.5rem; border-radius: 14px; }
+  #threads button:hover, #calls .open:hover, #contact-list .open:hover { background: var(--bg); }
   #threads button[aria-current="true"] { background: var(--gold-soft); }
-  #threads .body, #calls .body { flex: 1; min-width: 0; }
-  #view-recents { background: var(--surface); }
-  #calls li { display: flex; align-items: center; gap: 0.25rem; padding-right: 0.25rem; }
-  #calls .open { flex: 1; min-width: 0; }
+  #threads .body, #calls .body, #contact-list .body { flex: 1; min-width: 0; }
+  #view-recents, #view-contacts { background: var(--surface); }
+  #contact-search { margin: 0 1rem 0.5rem; width: calc(100% - 2rem); border-radius: 999px; }
+  #calls li, #contact-list li { display: flex; align-items: center; gap: 0.25rem; padding-right: 0.25rem; }
+  #calls .open, #contact-list .open { flex: 1; min-width: 0; }
   .kind { color: var(--soft); }
   .missed .who span, .missed .kind { color: var(--red); }
   #tabs .dot.red { background: var(--red); }
@@ -258,6 +259,15 @@
     <ul id="calls" aria-label="Recent calls"></ul>
   </section>
 
+  <section class="view" id="view-contacts" hidden>
+    <div class="bar">
+      <h1>Contacts</h1>
+      <button class="icon-btn" id="add-contact" aria-label="Add a contact"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+    <input id="contact-search" type="search" autocomplete="off" placeholder="Search by name or number" aria-label="Search contacts">
+    <ul id="contact-list" aria-label="Contacts"></ul>
+  </section>
+
   <section class="view" id="view-keypad" hidden>
     <input id="number" list="people" inputmode="tel" autocomplete="off" placeholder="Number" aria-label="Phone number">
     <div class="pad" id="dial-pad"></div>
@@ -282,6 +292,7 @@
   <nav id="tabs" role="tablist" aria-label="Sections">
     <button role="tab" data-view="messages" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Messages<i class="dot" id="unread-dot" hidden></i></button>
     <button role="tab" data-view="recents" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Recents<i class="dot red" id="missed-dot" hidden></i></button>
+    <button role="tab" data-view="contacts" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>Contacts</button>
     <button role="tab" data-view="keypad" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 5h.01M12 5h.01M18 5h.01M6 11h.01M12 11h.01M18 11h.01M6 17h.01M12 17h.01M18 17h.01" stroke-width="3"/></svg>Keypad</button>
     <button role="tab" data-view="settings" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Settings</button>
   </nav>
@@ -319,6 +330,7 @@
   <form method="dialog" id="name-form">
     <h2 id="name-title">Name this number</h2>
     <p class="hint" id="name-number"></p>
+    <input id="name-phone" inputmode="tel" autocomplete="off" placeholder="Phone number" aria-label="Phone number" hidden>
     <input id="name-input" autocomplete="off" placeholder="Name" aria-label="Name" maxlength="100" required>
     <div class="actions">
       <button class="btn quiet" type="button" id="name-cancel">Cancel</button>
@@ -562,31 +574,67 @@ $('new-cancel').onclick = () => $('newsheet').close();
 $('new-form').onsubmit = () => textTo($('new-number').value);
 
 // Giving a number a name, stored in the phone's own contacts.
-$('thread-name').onclick = () => {
-  $('name-number').textContent = open.number;
-  $('name-input').value = whoIs(open) === open.number ? '' : whoIs(open);
+let naming = null; // the number being named, or null when adding a new contact
+function nameSheet(number) {
+  naming = number;
+  $('name-title').textContent = number ? 'Name this number' : 'New contact';
+  $('name-number').textContent = number ?? '';
+  $('name-phone').hidden = !!number; $('name-phone').required = !number; $('name-phone').value = '';
+  const known = number ? whoIs({ number }) : '';
+  $('name-input').value = known && known !== number ? known : '';
   $('namesheet').showModal();
-};
+}
+$('thread-name').onclick = () => nameSheet(open.number);
+$('add-contact').onclick = () => nameSheet(null);
 $('name-cancel').onclick = () => $('namesheet').close();
 $('name-form').onsubmit = async () => {
-  const name = $('name-input').value.trim(), target = open;
-  const reply = await ask({ cmd: 'contact_save', number: clean(target.number), name });
+  const name = $('name-input').value.trim(), number = clean(naming ?? $('name-phone').value);
+  if (!NUMBER.test(number)) return toast('Enter a phone number');
+  const reply = await ask({ cmd: 'contact_save', number, name });
   if (!reply.ok) return toast(`Not saved: ${explain(reply.error)}`);
-  toast('Name saved');
-  target.name = name;
+  toast(naming ? 'Name saved' : 'Contact added');
   await loadContacts(); loadThreads(); loadCalls();
-  if (open === target) showMessages(target);
+  if (open && sameNumber(open.number, number)) { open.name = name; showMessages(open); }
 };
+
+// ---- contacts ------------------------------------------------------------------------------------
+
+let contactList = [];
+function drawContacts() {
+  const q = $('contact-search').value.trim().toLowerCase(), qd = q.replace(/\D/g, '');
+  const rows = contactList.filter((c) => !q || c.name.toLowerCase().includes(q)
+    || (qd.length >= 2 && c.number.replace(/\D/g, '').includes(qd)));
+  if (!rows.length) {
+    return $('contact-list').replaceChildren(el('p', 'nothing', contactList.length ? 'No contacts match.'
+      : 'No contacts yet. Add one with the plus button, or import a contacts file in Settings.'));
+  }
+  $('contact-list').replaceChildren(...rows.map((c) => {
+    const li = el('li'), open = el('button', 'open'), body = el('div', 'body'), who = el('div', 'who');
+    who.append(el('span', '', c.name));
+    body.append(who, el('div', 'kind', c.number));
+    open.append(el('div', 'tile', tileText(c.name)), body);
+    open.setAttribute('aria-label', `${c.name}, ${c.number}. Open the conversation`);
+    open.onclick = () => textTo(c.number);
+    const ring = el('button', 'icon-btn');
+    ring.innerHTML = $('thread-call').innerHTML;
+    ring.setAttribute('aria-label', `Call ${c.name}`);
+    ring.onclick = () => dial(c.number);
+    li.append(open, ring);
+    return li;
+  }));
+}
+$('contact-search').oninput = drawContacts;
 
 async function loadContacts() {
   const reply = await ask({ cmd: 'contacts' });
   if (!reply.ok) return;
+  contactList = reply.contacts;
   people = new Map(reply.contacts.map((c) => [digits(c.number), c.name]));
   $('people').replaceChildren(...reply.contacts.map((c) => { const o = el('option'); o.value = clean(c.number); o.label = c.name; return o; }));
   $('contacts-detail').textContent = people.size
     ? `${people.size} numbers have names. Import a contacts file (.vcf) to add more.`
     : 'Import a contacts file (.vcf) from your phone or address book, so names show instead of numbers.';
-  drawThreads(); drawCalls();
+  drawThreads(); drawCalls(); drawContacts();
 }
 
 // A .vcf from iPhone, Android, Google or macOS Contacts: the name and phone numbers of each card.
