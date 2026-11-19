@@ -89,7 +89,15 @@ Closing the page during a call hangs up, if no other client is connected.
 `cmd role add-role-holder android.app.role.SMS com.android.messaging` (or whichever app had it).
 To remove simbridge, on the phone as root: `rm -rf /data/adb/modules/simbridge` and reboot.
 
-## Credits
+## Licence and credits
 
-The mixer commands and the order of the audio set-up for Qualcomm phones come from
-[gsm2sip](https://github.com/pulpoff/gsm2sip) (MIT, © pulpoff).
+simbridge is MIT-licensed; see [LICENSE](LICENSE).
+
+- The mixer commands and the order of the audio set-up for Qualcomm phones come from
+  [gsm2sip](https://github.com/pulpoff/gsm2sip) (MIT, © pulpoff).
+- `tools/tinymix` is gsm2sip's tinymix, unchanged, under its own MIT licence in that folder.
+- The web client bundles the Bricolage Grotesque typeface (SIL Open Font License; see
+  `client/bricolage-grotesque.LICENSE.txt`).
+
+**Use it on your own SIM, and mind your local law.** simbridge answers and places calls and texts as the SIM's
+owner, and call audio passes through it. Recording or relaying calls is regulated in many places.

@@ -7,7 +7,7 @@ set -eu
 cd "$(dirname "$0")/.."
 
 PHONE=${PHONE:-moto}
-OLD_DIALER=${OLD_DIALER:-com.callagent.gateway}
+OLD_DIALER=${OLD_DIALER:-com.android.dialer}
 PKG=io.github.mukhtharcm.simbridge
 ZIP=build/simbridge-magisk.zip
 
