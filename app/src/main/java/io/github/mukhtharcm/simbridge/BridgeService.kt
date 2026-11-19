@@ -63,6 +63,15 @@ class BridgeService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 }
 
+/** Brings the API up after a reboot, and after an update replaces the app. */
+class BootReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(context: android.content.Context, intent: Intent) {
+        try { context.startForegroundService(Intent(context, BridgeService::class.java)) } catch (e: Exception) {
+            Log.w("simbridge", "foreground service did not start at boot: ${e.message}")
+        }
+    }
+}
+
 /** Exists because Android only offers the default-phone-app role to apps with a dial screen. */
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {

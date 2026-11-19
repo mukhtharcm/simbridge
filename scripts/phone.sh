@@ -20,6 +20,7 @@ build)
         ./gradlew -q testReleaseUnitTest assembleRelease
     rm -rf build/module && mkdir -p build/module/system/priv-app/Simbridge
     cp -R magisk/. build/module/
+    (cd tools/tinymix && GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o ../../build/module/tinymix .)
     cp app/build/outputs/apk/release/app-release.apk build/module/system/priv-app/Simbridge/Simbridge.apk
     rm -f "$ZIP" && (cd build/module && zip -qr "../simbridge-magisk.zip" .)
     echo "built $ZIP"
@@ -37,8 +38,13 @@ EOF
 update)
     # A new build over the installed one. No reboot: same package, same key.
     scp -q app/build/outputs/apk/release/app-release.apk "$PHONE:simbridge.apk"
+    scp -q build/module/tinymix build/module/service.sh "$PHONE:"
     root <<EOF
 set -e
+M=/data/adb/modules/simbridge
+cp /data/data/com.termux/files/home/tinymix /data/data/com.termux/files/home/service.sh \$M/
+chown root:root \$M/tinymix \$M/service.sh && chmod 755 \$M/tinymix \$M/service.sh
+rm /data/data/com.termux/files/home/tinymix /data/data/com.termux/files/home/service.sh
 cp /data/data/com.termux/files/home/simbridge.apk /data/local/tmp/simbridge.apk
 pm install -r /data/local/tmp/simbridge.apk
 cp /data/local/tmp/simbridge.apk /data/adb/modules/simbridge/system/priv-app/Simbridge/Simbridge.apk

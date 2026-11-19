@@ -13,7 +13,8 @@ two-way call audio, and reading and sending SMS.
 |---|---|
 | `app/` | The Android app (Kotlin; one dependency, the WebSocket server). |
 | `app/src/main/assets/profiles/` | One JSON file per chip family: the mixer commands and audio settings. Add a file to support another phone. |
-| `magisk/` | Magisk module that installs the app as a privileged app and sets the audio properties. |
+| `magisk/` | Magisk module that installs the app as a privileged app, sets the audio properties and opens the app once after boot. |
+| `tools/tinymix/` | The mixer tool the app runs as root (Go, from gsm2sip). Building needs Go. |
 | `scripts/phone.sh` | Build, install and drive it on the phone over ssh. |
 | `client/` | The web client: one page plus its app icon and manifest. No build step, no outside requests. |
 | `scripts/client.mjs` | A command-line test client. |
@@ -27,8 +28,8 @@ two-way call audio, and reading and sending SMS.
 
 ## What it needs from the phone
 
-- Root (Magisk) and a `tinymix` binary on the PATH. For now it uses the one gsm2sip's module installs; simbridge
-  will ship its own, built from source, before it can replace gsm2sip.
+- Root (Magisk). The module ships its own `tinymix`, built from the source in `tools/tinymix`, and runs it from
+  the module's folder, which only root can write.
 - To be a privileged app: capturing call audio needs `CAPTURE_AUDIO_OUTPUT`.
 - To be the default phone app: that is how Android hands it the calls.
 - To be the default SMS app: Android shows an app its own sent messages only then. simbridge then stores

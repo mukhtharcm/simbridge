@@ -9,7 +9,9 @@ object Root {
     /** Run tinymix once per argument string, in one root shell. Arguments come from the bundled profile only. */
     fun tinymix(args: List<String>) {
         if (args.isEmpty()) return
-        val out = run(listOf("su", "-c", args.joinToString("; ") { "tinymix $it 2>&1" }))
+        // simbridge's own build, in a folder only root can write. A tinymix on the PATH is the fallback.
+        val pick = "T=/data/adb/modules/simbridge/tinymix; [ -x \$T ] || T=tinymix; "
+        val out = run(listOf("su", "-c", pick + args.joinToString("; ") { "\$T $it 2>&1" }))
         if (out.isNotBlank()) Log.i(TAG, "tinymix: ${out.trim().take(600)}")
     }
 
