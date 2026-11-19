@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Must list every privileged permission in app/src/main/AndroidManifest.xml. -->
+<permissions>
+    <privapp-permissions package="io.github.mukhtharcm.simbridge">
+        <permission name="android.permission.CAPTURE_AUDIO_OUTPUT" />
+        <permission name="android.permission.MODIFY_PHONE_STATE" />
+    </privapp-permissions>
+</permissions>

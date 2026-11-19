@@ -1,0 +1,6 @@
+id=simbridge
+name=simbridge
+version=v0.0.1
+versionCode=1
+author=mukhtharcm
+description=Installs simbridge as a privileged app and switches on in-call audio capture.

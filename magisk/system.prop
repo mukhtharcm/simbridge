@@ -1,0 +1,7 @@
+# Qualcomm audio HAL: allow recording and playback while a voice call is up.
+# Without these the in-call capture sources return silence.
+voice.record.conc.disabled=false
+voice.voip.conc.disabled=false
+voice.playback.conc.disabled=false
+vendor.audio.feature.concurrent_capture.enable=true
+vendor.audio.feature.record_play_concurency.enable=true
