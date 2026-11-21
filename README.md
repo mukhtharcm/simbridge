@@ -19,7 +19,7 @@
   <img src="docs/hero.png" alt="The simbridge web client: a conversation on a computer, and a call in progress on a phone">
 </p>
 
-https://github.com/user-attachments/assets/6ca5f6f1-166a-4161-b249-b06f28386cd0
+https://github.com/user-attachments/assets/371c05b8-2c51-4e4f-a127-fcfaa81dd292
 
 simbridge turns a rooted Android phone into a small server for its own SIM. It takes over as the phone and SMS
 app, moves call audio in and out digitally (the phone's own microphone and speaker stay silent), and offers all
@@ -208,6 +208,8 @@ MIT; see [LICENSE](LICENSE).
 - [`tools/tinymix`](tools/tinymix) is gsm2sip's tinymix, unchanged, under its own MIT licence in that folder.
 - The web client bundles the Bricolage Grotesque typeface (SIL Open Font License; see
   `client/bricolage-grotesque.LICENSE.txt`).
+- The README video's music is "Tropicorp Advertisement" by code_box
+  ([Freesound](https://freesound.org/people/code_box/sounds/561190), CC0).
 
 **Use it on your own SIM, and mind your local law.** simbridge answers and places calls and texts as the
 SIM's owner, and call audio passes through it. Recording or relaying calls is regulated in many places.

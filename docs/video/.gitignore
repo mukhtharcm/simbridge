@@ -1,3 +1,4 @@
 .hyperframes/
 renders/
-assets/
+assets/*
+!assets/music.mp3
