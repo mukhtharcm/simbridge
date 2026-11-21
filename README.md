@@ -19,6 +19,8 @@
   <img src="docs/hero.png" alt="The simbridge web client: a conversation on a computer, and a call in progress on a phone">
 </p>
 
+https://github.com/user-attachments/assets/6ca5f6f1-166a-4161-b249-b06f28386cd0
+
 simbridge turns a rooted Android phone into a small server for its own SIM. It takes over as the phone and SMS
 app, moves call audio in and out digitally (the phone's own microphone and speaker stay silent), and offers all
 of it through one WebSocket API. The included web client uses that API; anything else can too.
@@ -171,6 +173,9 @@ app, and in what order. simbridge picks the profile whose `platforms` list conta
 A profile that works on your phone is a welcome pull request.
 
 ## Building from source
+
+The README's pictures and video are made from the web client with made-up data: `docs/shots/make.sh` takes
+the pictures and the video's stills, then `npx hyperframes render` in `docs/video` renders the video.
 
 You need JDK 17 and the Android SDK (Android Studio has both), and Go for `tinymix`.
 

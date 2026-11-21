@@ -1,0 +1,25 @@
+<template>
+  <style>
+    @font-face { font-family: Bricolage; src: url('assets/fonts/bricolage-grotesque.woff2'); font-weight: 200 800; }
+    #root { position: absolute; inset: 0; font-family: Bricolage; color: #fff; text-align: center;
+            background: radial-gradient(1100px 700px at 50% 120%, #2a3a63 0%, transparent 60%), #14213d; }
+    #end-icon { position: absolute; left: 900px; top: 270px; width: 120px; height: 120px; border-radius: 28px; }
+    #end-name { position: absolute; left: 0; right: 0; top: 420px; font-size: 120px; font-weight: 800; letter-spacing: -0.04em; }
+    #end-line { position: absolute; left: 0; right: 0; top: 590px; font-size: 44px; font-weight: 500; color: #b8c0d3; }
+    #end-url { position: absolute; left: 0; right: 0; top: 700px; font-size: 32px; font-weight: 600; color: #c9a227; }
+  </style>
+  <div id="root" data-composition-id="end" data-width="1920" data-height="1080">
+    <img id="end-icon" src="assets/icon-512.png" alt="">
+    <div id="end-name">simbridge</div>
+    <div id="end-line">Your spare Android phone's SIM, in a browser.</div>
+    <div id="end-url">github.com/mukhtharcm/simbridge</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#end-icon", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.4)" }, 0.1);
+    tl.fromTo("#end-name", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power4.out" }, 0.3);
+    tl.fromTo("#end-line", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 0.65);
+    tl.fromTo("#end-url", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 0.95);
+    window.__timelines["end"] = tl;
+  </script>
+</template>

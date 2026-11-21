@@ -1,5 +1,6 @@
 // Made-up data for the README pictures; make.sh adds it to a copy of the client. The view is picked by
 // the page's hash: #thread, #messages, #recents, #contacts, #call or #ringing, plus "-dark" for dark mode.
+// The video (docs/video) also passes ?n= (how many messages the thread shows) and ?t= (seconds into the call).
 document.head.append(Object.assign(document.createElement('style'), { textContent: '*{animation:none!important;transition:none!important}' }));
 const [view, theme] = location.hash.slice(1).split('-');
 if (theme === 'dark') document.head.append(Object.assign(document.createElement('style'), { textContent:
@@ -9,7 +10,7 @@ if (window.frameElement?.closest('.phone')) document.head.append(Object.assign(d
   ':root{--safe-t:46px;--safe-b:22px} body{background:var(--surface)}' }));
 $('setup').hidden = true; $('app').hidden = false; status('Connected', 'sim.example.com');
 ws = { send() {}, readyState: 1, close() {} };
-const now = Math.floor(Date.now() / 1000);
+const now = Math.floor(Date.now() / 1000), q = new URLSearchParams(location.search);
 contactList = [
   ['Ada Lovelace', '+15550100123'], ['Alan Turing', '+15550100789'], ['Barbara Liskov', '+15550100321'],
   ['Edsger Dijkstra', '+15550100654'], ['Grace Hopper', '+15550100456'], ['Katherine Johnson', '+15550100987'],
@@ -44,16 +45,17 @@ if (view === 'thread') {
     { text: 'Yes, give me a moment to find my notes', at: now - 1100, out: false },
     { text: 'No rush. I’ll share the agenda when we start.', at: now - 900, out: true },
     { text: 'Running ten minutes late, start without me', at: now - 300, out: false },
-  ]));
+    { text: 'No problem, I’ll take notes for you', at: now - 240, out: true },
+  ].slice(0, +q.get('n') || 4)));
   drawThreads();
 } else if (view === 'recents' || view === 'contacts') {
   show(view); store.set(SEEN, '0'); drawCalls();
 } else if (view === 'call') {
   audio = {}; outputs = [{ deviceId: 'a', label: 'iPhone' }, { deviceId: 'b', label: 'Speaker' }];
   onCall({ event: 'call', id: 'c1', state: 'active', direction: 'in', number: '+15550100123', name: 'Ada Lovelace' });
-  call.since = Date.now() - 154000; drawCall(true);
+  call.since = Date.now() - (q.has('t') ? +q.get('t') : 154) * 1000; drawCall(true);
   $('voice').style.setProperty('--level', '0.55');
 } else if (view === 'ringing') {
   ring = () => {};
-  onCall({ event: 'call', id: 'c2', state: 'ringing', direction: 'in', number: '+15550100789', name: 'Alan Turing' });
+  onCall({ event: 'call', id: 'c2', state: 'ringing', direction: 'in', number: '+15550100123', name: 'Ada Lovelace' });
 }

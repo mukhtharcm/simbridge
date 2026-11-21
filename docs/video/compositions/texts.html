@@ -1,0 +1,64 @@
+<template>
+  <style>
+    @font-face { font-family: Bricolage; src: url('assets/fonts/bricolage-grotesque.woff2'); font-weight: 200 800; }
+    #root { position: absolute; inset: 0; font-family: Bricolage; color: #14213d; overflow: hidden; }
+    #texts-light { position: absolute; inset: 0; background: radial-gradient(1200px 600px at 50% 0%, #fff 0%, transparent 70%), #e9edf3; }
+    .cap { position: absolute; left: 0; right: 0; top: 78px; text-align: center; font-size: 60px; font-weight: 700; letter-spacing: -0.025em; }
+    .cap span { display: inline-block; margin: 0 0.11em; }
+    .cap em { font-style: normal; color: #b08a12; }
+    #texts-window { position: absolute; left: 370px; top: 200px; width: 1180px; height: 804px; border-radius: 16px; overflow: hidden;
+                    background: #fff; box-shadow: 0 50px 100px -30px rgba(20,33,61,.45), 0 0 0 1px rgba(20,33,61,.08); }
+    .bar { height: 44px; background: #e8ebf0; display: flex; align-items: center; gap: 8px; padding: 0 18px; }
+    .bar i { width: 13px; height: 13px; border-radius: 50%; background: #c9ced8; }
+    .bar span { margin-left: 18px; width: 440px; height: 26px; border-radius: 8px; background: #fff; color: #5b6478; font-size: 15px;
+                display: flex; align-items: center; padding-left: 12px; }
+    .shot { position: absolute; left: 0; top: 44px; width: 1180px; height: 760px; }
+    #texts-typed { position: absolute; left: 456px; top: 752px; width: 640px; height: 34px; line-height: 34px; padding-left: 8px;
+                   background: #fff; font-size: 16.5px; color: #14213d; white-space: pre; }
+    #texts-note { position: absolute; left: 1300px; top: 150px; width: 560px; padding: 18px 20px; border-radius: 22px; display: flex; gap: 16px;
+                  background: rgba(255,255,255,.96); box-shadow: 0 30px 60px -20px rgba(20,33,61,.5), 0 0 0 1px rgba(20,33,61,.06); }
+    #texts-note img { width: 56px; height: 56px; border-radius: 13px; }
+    #texts-note b { display: block; font-size: 21px; } #texts-note p { font-size: 19px; color: #3d4760; margin-top: 3px; }
+    #texts-note small { position: absolute; right: 20px; top: 18px; font-size: 15px; color: #626a7d; }
+  </style>
+  <div id="root" data-composition-id="texts" data-width="1920" data-height="1080">
+    <div id="texts-light"></div>
+    <div id="texts-cap-a" class="cap clip" data-start="0" data-duration="3.5"><span>Texts</span><span>arrive</span><span>in</span><span>your</span><span><em>browser.</em></span></div>
+    <div id="texts-cap-b" class="cap clip" data-start="3.5" data-duration="3.9"><span>Reply</span><span>from</span><span>any</span><span><em>device.</em></span></div>
+    <div id="texts-window" data-layout-allow-overlap>
+      <div class="bar"><i></i><i></i><i></i><span>🔒 sim.example.com</span></div>
+      <img id="texts-s3" class="shot" src="assets/desk-3.png" alt="">
+      <img id="texts-s4" class="shot" src="assets/desk-4.png" alt="">
+      <img id="texts-s5" class="shot" src="assets/desk-5.png" alt="">
+      <div id="texts-typed"></div>
+    </div>
+    <div id="texts-note" data-layout-allow-overlap>
+      <img src="assets/icon-512.png" alt=""><div><b>Ada Lovelace</b><p>Running ten minutes late, start without me</p></div><small>simbridge</small>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // The ground floods light while the browser window rises in.
+    tl.fromTo("#texts-light", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.inOut" }, 0);
+    tl.fromTo("#texts-window", { y: 260, scale: 0.9, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.8, ease: "expo.out" }, 0.05);
+    tl.fromTo("#texts-cap-a span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.13, stagger: 0.08, ease: "power4.out" }, 0.4);
+    tl.set(["#texts-s4", "#texts-s5"], { opacity: 0 }, 0);
+    // A text arrives: the notification drops in and the conversation updates.
+    tl.fromTo("#texts-note", { x: 520, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: "expo.out" }, 1.0);
+    tl.to("#texts-s4", { opacity: 1, duration: 0.15, ease: "power2.out" }, 1.15);
+    tl.to("#texts-note", { x: 520, opacity: 0, duration: 0.35, ease: "power3.in" }, 3.2);
+    tl.to("#texts-cap-a span", { opacity: 0, filter: "blur(8px)", duration: 0.16, stagger: 0.03, ease: "power2.in" }, 3.25);
+    tl.fromTo("#texts-cap-b span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.13, stagger: 0.08, ease: "power4.out" }, 3.55);
+    // You type a reply and send it.
+    const reply = "No problem, I’ll take notes for you";
+    const typed = { n: 0 };
+    tl.fromTo("#texts-typed", { opacity: 0 }, { opacity: 1, duration: 0.01 }, 3.88);
+    tl.fromTo(typed, { n: 0 }, { n: reply.length, duration: 1.4, ease: "none",
+      onUpdate: () => { document.querySelector("#texts-typed").textContent = reply.slice(0, Math.round(typed.n)); } }, 3.9);
+    tl.to("#texts-typed", { opacity: 0, duration: 0.05 }, 5.6);
+    tl.to("#texts-s5", { opacity: 1, duration: 0.15, ease: "power2.out" }, 5.6);
+    // Leave with a whip to the left.
+    tl.to(["#texts-window", "#texts-cap-b"], { x: -1400, filter: "blur(18px)", duration: 0.4, ease: "power3.in" }, 7.0);
+    window.__timelines["texts"] = tl;
+  </script>
+</template>

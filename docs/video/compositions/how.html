@@ -1,0 +1,50 @@
+<template>
+  <style>
+    @font-face { font-family: Bricolage; src: url('assets/fonts/bricolage-grotesque.woff2'); font-weight: 200 800; }
+    #root { position: absolute; inset: 0; font-family: Bricolage; overflow: hidden;
+            background: radial-gradient(1200px 600px at 50% 0%, #fff 0%, transparent 70%), #e9edf3; }
+    #how-title { position: absolute; left: 0; right: 0; top: 130px; text-align: center; font-size: 64px; font-weight: 700; color: #14213d; letter-spacing: -0.025em; }
+    #how-svg { position: absolute; left: 0; top: 260px; width: 1920px; height: 672px; }
+    .t { font: 700 34px Bricolage; text-anchor: middle; letter-spacing: -.02em }
+    .s { font: 500 24px Bricolage; text-anchor: middle }
+    .l { font: 600 21px Bricolage; fill: #5b6478; text-anchor: middle }
+  </style>
+  <div id="root" data-composition-id="how" data-width="1920" data-height="1080">
+    <div id="how-title">How it works</div>
+    <svg id="how-svg" viewBox="0 0 1600 560" data-layout-allow-overlap>
+      <defs><marker id="how-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#14213d"/></marker>
+        <marker id="how-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c9a227"/></marker></defs>
+      <g id="how-sim"><path d="M70 120h86l34 34v72a14 14 0 0 1-14 14H70a14 14 0 0 1-14-14V134a14 14 0 0 1 14-14z" fill="#c9a227"/>
+        <rect x="86" y="160" width="74" height="54" rx="8" fill="#f6edcb"/><text x="123" y="290" class="l">The SIM</text></g>
+      <g id="how-bridge"><line x1="200" y1="180" x2="262" y2="180" stroke="#14213d" stroke-width="3"/>
+        <rect x="270" y="105" width="330" height="150" rx="22" fill="#14213d"/>
+        <text x="435" y="171" class="t" fill="#fff">simbridge</text><text x="435" y="207" class="s" fill="#b8c0d3">on the spare phone</text></g>
+      <g id="how-ws"><line x1="608" y1="180" x2="802" y2="180" stroke="#14213d" stroke-width="3" marker-start="url(#how-a)" marker-end="url(#how-a)"/>
+        <text x="705" y="150" class="l">WebSocket API</text><text x="705" y="222" class="l">texts, calls, audio</text></g>
+      <g id="how-proxy"><rect x="810" y="105" width="300" height="150" rx="22" fill="#fff" stroke="#dde1e7" stroke-width="2"/>
+        <text x="960" y="171" class="t" fill="#14213d">HTTPS proxy</text><text x="960" y="207" class="s" fill="#5b6478">on your private network</text></g>
+      <g id="how-client"><line x1="1118" y1="180" x2="1252" y2="180" stroke="#14213d" stroke-width="3" marker-start="url(#how-a)" marker-end="url(#how-a)"/>
+        <rect x="1260" y="105" width="290" height="150" rx="22" fill="#14213d"/>
+        <text x="1405" y="171" class="t" fill="#fff">Web client</text><text x="1405" y="207" class="s" fill="#b8c0d3">or your own app</text></g>
+      <g id="how-push">
+        <path id="how-p1" d="M435 263V430H760" fill="none" stroke="#c9a227" stroke-width="3" stroke-dasharray="10 9" marker-end="url(#how-g)"/>
+        <rect id="how-pbox" x="770" y="380" width="320" height="100" rx="22" fill="#f6edcb"/>
+        <text x="930" y="424" class="t" style="font-size:28px" fill="#14213d">Push service</text>
+        <text x="930" y="456" class="s" fill="#5b6478">Apple, Google or Mozilla</text>
+        <path id="how-p2" d="M1100 430H1405V263" fill="none" stroke="#c9a227" stroke-width="3" stroke-dasharray="10 9" marker-end="url(#how-g)"/>
+        <text x="600" y="410" class="l">encrypted notification</text><text x="1250" y="410" class="l">even with the client closed</text></g>
+    </svg>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#root", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.inOut" }, 0);
+    tl.fromTo("#how-title", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power4.out" }, 0.2);
+    // The diagram grows left to right, one part at a time, then the push path.
+    ["#how-sim", "#how-bridge", "#how-ws", "#how-proxy", "#how-client"].forEach((id, i) =>
+      tl.fromTo(id, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.5, ease: "expo.out" }, 0.6 + i * 0.55));
+    tl.fromTo("#how-push", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out" }, 3.6);
+    tl.fromTo("#how-push", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 1.0, ease: "power2.inOut" }, 3.6);
+    tl.to("#root", { opacity: 0, duration: 0.25, ease: "power2.in" }, 6.75);
+    window.__timelines["how"] = tl;
+  </script>
+</template>

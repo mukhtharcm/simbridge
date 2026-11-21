@@ -1,0 +1,52 @@
+<template>
+  <style>
+    @font-face { font-family: Bricolage; src: url('assets/fonts/bricolage-grotesque.woff2'); font-weight: 200 800; }
+    #root { position: absolute; inset: 0; font-family: Bricolage; color: #fff; overflow: hidden;
+            background: radial-gradient(1100px 700px at 80% 110%, #2a3a63 0%, transparent 60%), radial-gradient(700px 500px at 0% 0%, #1d2c52 0%, transparent 70%), #14213d; }
+    .cap { position: absolute; left: 200px; width: 760px; top: 420px; font-size: 76px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; }
+    .cap span { display: inline-block; margin-right: 0.22em; }
+    .cap em { font-style: normal; color: #c9a227; }
+    #calls-phone { position: absolute; left: 1150px; top: 108px; width: 410px; height: 864px; }
+    #calls-phone img { position: absolute; inset: 0; width: 410px; height: 864px; }
+    #calls-glow { position: absolute; left: 1150px; top: 108px; width: 410px; height: 864px; border-radius: 64px;
+                  box-shadow: 0 0 0 2px #2b3243, 0 50px 100px -20px rgba(0,0,0,.7); }
+    #calls-ring { position: absolute; left: 1355px; top: 465px; width: 0; height: 0; }
+    #calls-ring i { position: absolute; left: -110px; top: -110px; width: 220px; height: 220px; border-radius: 50%; border: 3px solid #c9a227; }
+    #calls-bars { position: absolute; left: 1040px; top: 520px; width: 80px; height: 120px; display: flex; gap: 10px; align-items: center; }
+    #calls-bars i, #calls-bars2 i { width: 10px; height: 20px; border-radius: 5px; background: #c9a227; }
+    #calls-bars2 { position: absolute; left: 1590px; top: 520px; width: 80px; height: 120px; display: flex; gap: 10px; align-items: center; }
+  </style>
+  <div id="root" data-composition-id="calls" data-width="1920" data-height="1080">
+    <div id="calls-cap-a" class="cap clip" data-start="0" data-duration="2.9"><span>Calls</span><span>ring</span><span>there</span><span><em>too.</em></span></div>
+    <div id="calls-cap-b" class="cap clip" data-start="2.9" data-duration="3.7"><span>Answer,</span><span>and</span><span>the</span><span>audio</span><span>flows</span><span><em>both</em></span><span><em>ways.</em></span></div>
+    <div id="calls-glow"></div>
+    <div id="calls-ring"><i></i></div>
+    <div id="calls-phone">
+      <img id="calls-ringing" src="assets/phone-ringing.png" alt="">
+      <img id="calls-active" src="assets/phone-call.png" alt="">
+    </div>
+    <div id="calls-bars"><i></i><i></i><i></i><i></i><i></i></div>
+    <div id="calls-bars2"><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(["#calls-phone", "#calls-glow"], { x: 900, filter: "blur(18px)" }, { x: 0, filter: "blur(0px)", duration: 0.6, ease: "expo.out" }, 0);
+    tl.set("#calls-active", { opacity: 0 }, 0);
+    tl.fromTo("#calls-cap-a span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.13, stagger: 0.08, ease: "power4.out" }, 0.35);
+    // The ringing: rings spread from the caller's picture, one per 0.8 s.
+    [0.5, 1.3, 2.1].forEach((t) => tl.fromTo("#calls-ring i", { scale: 0.9, opacity: 0.8 }, { scale: 1.5, opacity: 0, duration: 0.8, ease: "power2.out", immediateRender: false }, t));
+    tl.to("#calls-cap-a span", { opacity: 0, filter: "blur(8px)", duration: 0.16, stagger: 0.03, ease: "power2.in" }, 2.65);
+    // Answer: the call screen takes over.
+    tl.to("#calls-active", { opacity: 1, duration: 0.15, ease: "power2.out" }, 2.9);
+    tl.fromTo("#calls-phone", { scale: 1 }, { scale: 1.02, duration: 0.12, ease: "power2.out", yoyo: true, repeat: 1 }, 2.85);
+    tl.fromTo("#calls-cap-b span", { color: "#3a4a70" }, { color: "#ffffff", duration: 0.1, stagger: 0.09, ease: "none" }, 3.0);
+    tl.set("#calls-cap-b em", { color: "#c9a227" }, 3.6);
+    // Call audio both ways: levels on each side of the phone, as the call goes on.
+    const bars = gsap.utils.toArray("#calls-bars i, #calls-bars2 i");
+    for (let k = 0; k < 16; k++) bars.forEach((b, i) =>
+      tl.to(b, { height: 20 + 90 * Math.abs(Math.sin(i * 1.7 + k * 2.3)), duration: 0.18, ease: "power1.inOut" }, 3.1 + k * 0.18));
+    tl.fromTo(["#calls-bars", "#calls-bars2"], { opacity: 0 }, { opacity: 1, duration: 0.2 }, 3.05);
+    tl.to("#root > *", { opacity: 0, filter: "blur(10px)", duration: 0.25, ease: "power2.in" }, 6.3);
+    window.__timelines["calls"] = tl;
+  </script>
+</template>

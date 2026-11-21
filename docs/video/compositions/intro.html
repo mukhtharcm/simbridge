@@ -1,0 +1,33 @@
+<template>
+  <style>
+    @font-face { font-family: Bricolage; src: url('assets/fonts/bricolage-grotesque.woff2'); font-weight: 200 800; }
+    #root { position: absolute; inset: 0; background: #14213d; font-family: Bricolage; color: #fff; }
+    .line { position: absolute; left: 0; right: 0; top: 470px; text-align: center; font-size: 92px; font-weight: 700; letter-spacing: -0.03em; }
+    .line span { display: inline-block; margin: 0 0.12em; }
+    .line em { font-style: normal; color: #c9a227; }
+    #intro-sim { position: absolute; left: 912px; top: 300px; width: 96px; height: 120px; }
+  </style>
+  <div id="root" data-composition-id="intro" data-width="1920" data-height="1080">
+    <svg id="intro-sim" class="clip" data-start="0" data-duration="2.9" viewBox="0 0 120 150">
+      <path d="M14 0h70l36 36v100a14 14 0 0 1-14 14H14A14 14 0 0 1 0 136V14A14 14 0 0 1 14 0z" fill="#c9a227"/>
+      <rect x="22" y="52" width="76" height="58" rx="9" fill="#f6edcb"/>
+    </svg>
+    <div id="intro-a" class="line clip" data-start="0" data-duration="2.9">
+      <span>Your</span><span>spare</span><span>Android</span><span>phone</span><span>has</span><span>a</span><span><em>SIM.</em></span>
+    </div>
+    <div id="intro-b" class="line clip" data-start="2.9" data-duration="2.5">
+      <span>simbridge</span><span>puts</span><span>it</span><span>in</span><span>your</span><span><em>browser.</em></span>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#intro-sim", { y: 30, rotate: -8 }, { y: 0, rotate: 0, duration: 0.9, ease: "expo.out" }, 0);
+    tl.fromTo("#intro-a span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.13, stagger: 0.08, ease: "power4.out" }, 0.35);
+    tl.to("#intro-a span", { opacity: 0, filter: "blur(8px)", duration: 0.18, stagger: 0.03, ease: "power2.in" }, 2.6);
+    tl.to("#intro-sim", { opacity: 0, y: -20, duration: 0.25, ease: "power3.in" }, 2.6);
+    tl.fromTo("#intro-b span", { color: "#3a4a70" }, { color: "#ffffff", duration: 0.1, stagger: 0.09, ease: "none" }, 2.95);
+    tl.set("#intro-b em", { color: "#c9a227" }, 3.45);
+    tl.to("#intro-b", { y: -340, scale: 0.6, opacity: 0, filter: "blur(10px)", duration: 0.45, ease: "power3.in" }, 4.95);
+    window.__timelines["intro"] = tl;
+  </script>
+</template>

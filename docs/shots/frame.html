@@ -43,9 +43,13 @@ const bar = `<div class="status"><b>9:41</b><span>
   <svg viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2.5" y="2.5" width="17" height="8" rx="2"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" opacity=".4"/></svg></span></div>`;
 const phone = (view, x, y, scale, light = false) =>
   add(`<div class="phone" style="left:${x}px;top:${y}px;transform:scale(${scale});color:${light ? '#14213d' : '#fff'}">
-         <iframe src="index.html#${view}"></iframe>${bar}</div>`);
+         <iframe src="index.html${view.includes('#') ? view : '#' + view}"></iframe>${bar}</div>`);
 
-if (shot === 'hero') {
+if (shot.startsWith('phone:')) {
+  // One phone on a clear ground, for the video: #phone:ringing, or #phone:?t=4#call.
+  phone(decodeURIComponent(shot.slice(6)), 0, 0, 1);
+  document.querySelector('.phone').style.boxShadow = 'none';
+} else if (shot === 'hero') {
   document.body.className = 'hero';
   add(`<div class="window" style="left:70px;top:120px;width:1060px">
          <div class="bar"><i></i><i></i><i></i><span>🔒 sim.example.com</span></div>
